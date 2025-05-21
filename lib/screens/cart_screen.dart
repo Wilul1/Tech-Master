@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'checkout_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({Key? key}) : super(key: key);
@@ -265,8 +266,12 @@ class _CartScreenState extends State<CartScreen> {
                                           elevation: 2,
                                         ),
                                         onPressed: () {
-                                          // TODO: Implement checkout logic
-                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Proceeding to checkout...')));
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => const CheckoutScreen(),
+                                            ),
+                                          );
                                         },
                                         child: const Text('CHECKOUT'),
                                       ),
@@ -468,8 +473,12 @@ class _CartScreenState extends State<CartScreen> {
                                           elevation: 2,
                                         ),
                                         onPressed: () {
-                                          // TODO: Implement checkout logic
-                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Proceeding to checkout...')));
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => const CheckoutScreen(),
+                                            ),
+                                          );
                                         },
                                         child: const Text('CHECKOUT'),
                                       ),
