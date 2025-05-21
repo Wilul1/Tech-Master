@@ -6,6 +6,7 @@ import '../../widgets/custom_button.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import '../home_screen.dart';
+import '../admin_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -35,12 +36,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
+      // Hardcoded admin login
+      if (_emailController.text.trim() == 'admin@techhub.com' && _passwordController.text == 'admin123') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Logged in as Admin!'), backgroundColor: Colors.green),
+        );
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const AdminScreen()),
+        );
+        return;
+      }
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final success = await authProvider.signIn(
         _emailController.text.trim(),
         _passwordController.text,
       );
-
       if (success && mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const HomeScreen()),
@@ -59,6 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    bool isAdminCreds = _emailController.text.trim() == 'admin@techhub.com' && _passwordController.text == 'admin123';
 
     return Scaffold(
       body: SafeArea(
@@ -161,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   CustomButton(
                     text: 'Login',
                     onPressed: _login,
-                    isLoading: authProvider.isLoading,
+                    isLoading: isAdminCreds ? false : authProvider.isLoading,
                   ),
                   const SizedBox(height: 24),
 
