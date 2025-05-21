@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/custom_button.dart';
 import 'auth/login_screen.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -18,7 +21,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _bioController = TextEditingController();
   String? _gender;
   DateTime? _birthday;
-  bool _registerAsSeller = false;
+  File? _profileImage;
 
   @override
   void dispose() {
@@ -29,16 +32,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _firstNameController.text = prefs.getString('profile_firstName') ?? '';
+      _lastNameController.text = prefs.getString('profile_lastName') ?? '';
+      _bioController.text = prefs.getString('profile_bio') ?? '';
+      _gender = prefs.getString('profile_gender');
+      final birthdayString = prefs.getString('profile_birthday');
+      if (birthdayString != null && birthdayString.isNotEmpty) {
+        _birthday = DateTime.tryParse(birthdayString);
+      }
+      final imagePath = prefs.getString('profile_image');
+      if (imagePath != null && imagePath.isNotEmpty) {
+        _profileImage = File(imagePath);
+      }
+    });
+  }
+
+  Future<void> _saveProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('profile_firstName', _firstNameController.text);
+    await prefs.setString('profile_lastName', _lastNameController.text);
+    await prefs.setString('profile_bio', _bioController.text);
+    await prefs.setString('profile_gender', _gender ?? '');
+    await prefs.setString('profile_birthday', _birthday?.toIso8601String() ?? '');
+    await prefs.setString('profile_image', _profileImage?.path ?? '');
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _profileImage = File(pickedFile.path);
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.user;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F8FB),
+      backgroundColor: const Color(0xFF14171C),
       appBar: AppBar(
-        title: const Text('Profile', style: TextStyle(color: Colors.white)),
-        backgroundColor: const Color(0xFF3ABEFF),
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('Profile', style: TextStyle(color: Color(0xFF00D1FF))),
+        backgroundColor: const Color(0xFF181C23),
+        iconTheme: const IconThemeData(color: Color(0xFF00D1FF)),
         elevation: 2,
       ),
       body: SingleChildScrollView(
@@ -55,11 +102,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: const Color(0xFF232A34),
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
+                          color: Colors.black.withOpacity(0.10),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -70,43 +117,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         // Profile Avatar
                         CircleAvatar(
                           radius: 60,
-                          backgroundColor: const Color(0xFF3ABEFF),
-                          child: user?.photoUrl != null
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(60),
-                                  child: Image.network(
-                                    user!.photoUrl!,
-                                    width: 120,
-                                    height: 120,
-                                    fit: BoxFit.cover,
-                                  ),
-                                )
-                              : const Icon(
+                          backgroundColor: const Color(0xFF00D1FF),
+                          backgroundImage: _profileImage != null
+                              ? FileImage(_profileImage!)
+                              : (user?.photoUrl != null
+                                  ? NetworkImage(user!.photoUrl!)
+                                  : null) as ImageProvider<Object>?,
+                          child: (_profileImage == null && (user?.photoUrl == null))
+                              ? const Icon(
                                   Icons.person,
                                   size: 60,
                                   color: Colors.white,
-                                ),
+                                )
+                              : null,
                         ),
                         const SizedBox(height: 12),
                         OutlinedButton(
-                          onPressed: () {
-                            // TODO: Implement change photo
-                          },
+                          onPressed: _pickImage,
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF3ABEFF)),
+                            side: const BorderSide(color: Color(0xFF00D1FF)),
                           ),
-                          child: const Text('Change Photo', style: TextStyle(color: Color(0xFF3ABEFF))),
+                          child: const Text('Change Photo', style: TextStyle(color: Color(0xFF00D1FF))),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           '@${user?.displayName ?? 'username'}',
-                          style: const TextStyle(color: Color(0xFF232B3A), fontSize: 16),
+                          style: const TextStyle(color: Color(0xFF00D1FF), fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Color(0xFF3ABEFF),
+                            color: Color(0xFF00D1FF),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text('Buyer', style: TextStyle(color: Colors.white)),
@@ -122,11 +164,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: const Color(0xFF232A34),
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
+                          color: Colors.black.withOpacity(0.10),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -137,29 +179,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Edit Profile', style: TextStyle(color: Color(0xFF232B3A), fontSize: 22, fontWeight: FontWeight.bold)),
+                          const Text('Edit Profile', style: TextStyle(color: Color(0xFF00D1FF), fontSize: 22, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 16),
                           Row(
                             children: [
                               Expanded(
                                 child: TextFormField(
                                   controller: _firstNameController,
-                                  style: const TextStyle(color: Color(0xFF232B3A)),
-                                  decoration: _inputDecoration('First Name').copyWith(
-                                    fillColor: Color(0xFFF4F8FB),
-                                    filled: true,
-                                  ),
+                                  style: const TextStyle(color: Color(0xFF00D1FF)),
+                                  decoration: _inputDecoration('First Name'),
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: TextFormField(
                                   controller: _lastNameController,
-                                  style: const TextStyle(color: Color(0xFF232B3A)),
-                                  decoration: _inputDecoration('Last Name').copyWith(
-                                    fillColor: Color(0xFFF4F8FB),
-                                    filled: true,
-                                  ),
+                                  style: const TextStyle(color: Color(0xFF00D1FF)),
+                                  decoration: _inputDecoration('Last Name'),
                                 ),
                               ),
                             ],
@@ -167,12 +203,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 12),
                           TextFormField(
                             controller: _bioController,
-                            style: const TextStyle(color: Color(0xFF232B3A)),
+                            style: const TextStyle(color: Color(0xFF00D1FF)),
                             maxLines: 3,
-                            decoration: _inputDecoration('Bio').copyWith(
-                              fillColor: Color(0xFFF4F8FB),
-                              filled: true,
-                            ),
+                            decoration: _inputDecoration('Bio'),
                           ),
                           const SizedBox(height: 12),
                           Row(
@@ -180,16 +213,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Expanded(
                                 child: DropdownButtonFormField<String>(
                                   value: _gender,
-                                  dropdownColor: Colors.white,
-                                  style: const TextStyle(color: Color(0xFF232B3A)),
-                                  decoration: _inputDecoration('Gender').copyWith(
-                                    fillColor: Color(0xFFF4F8FB),
-                                    filled: true,
-                                  ),
+                                  dropdownColor: const Color(0xFF232A34),
+                                  style: const TextStyle(color: Color(0xFF00D1FF)),
+                                  decoration: _inputDecoration('Gender'),
                                   items: const [
-                                    DropdownMenuItem(value: 'Male', child: Text('Male', style: TextStyle(color: Color(0xFF232B3A)))),
-                                    DropdownMenuItem(value: 'Female', child: Text('Female', style: TextStyle(color: Color(0xFF232B3A)))),
-                                    DropdownMenuItem(value: 'Other', child: Text('Other', style: TextStyle(color: Color(0xFF232B3A)))),
+                                    DropdownMenuItem(value: 'Male', child: Text('Male', style: TextStyle(color: Color(0xFF00D1FF)))),
+                                    DropdownMenuItem(value: 'Female', child: Text('Female', style: TextStyle(color: Color(0xFF00D1FF)))),
+                                    DropdownMenuItem(value: 'Other', child: Text('Other', style: TextStyle(color: Color(0xFF00D1FF)))),
                                   ],
                                   onChanged: (value) {
                                     setState(() {
@@ -202,11 +232,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Expanded(
                                 child: TextFormField(
                                   readOnly: true,
-                                  style: const TextStyle(color: Color(0xFF232B3A)),
+                                  style: const TextStyle(color: Color(0xFF00D1FF)),
                                   decoration: _inputDecoration('Birthday').copyWith(
-                                    suffixIcon: Icon(Icons.calendar_today, color: Color(0xFF232B3A)),
-                                    fillColor: Color(0xFFF4F8FB),
-                                    filled: true,
+                                    suffixIcon: Icon(Icons.calendar_today, color: Color(0xFF00D1FF)),
                                   ),
                                   controller: TextEditingController(
                                     text: _birthday == null ? '' : '${_birthday!.month}/${_birthday!.day}/${_birthday!.year}',
@@ -219,12 +247,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       lastDate: DateTime.now(),
                                       builder: (context, child) {
                                         return Theme(
-                                          data: ThemeData.light().copyWith(
-                                            colorScheme: const ColorScheme.light(
-                                              primary: Color(0xFF3ABEFF),
+                                          data: ThemeData.dark().copyWith(
+                                            colorScheme: const ColorScheme.dark(
+                                              primary: Color(0xFF00D1FF),
                                               onPrimary: Colors.white,
-                                              surface: Colors.white,
-                                              onSurface: Color(0xFF232B3A),
+                                              surface: Color(0xFF232A34),
+                                              onSurface: Color(0xFF00D1FF),
                                             ),
                                           ),
                                           child: child!,
@@ -241,28 +269,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Checkbox(
-                                value: _registerAsSeller,
-                                onChanged: (val) {
-                                  setState(() {
-                                    _registerAsSeller = val ?? false;
-                                  });
-                                },
-                                activeColor: const Color(0xFF3ABEFF),
-                              ),
-                              const Text('Register as Seller', style: TextStyle(color: Color(0xFF232B3A))),
-                            ],
-                          ),
                           const SizedBox(height: 16),
                           ElevatedButton(
-                            onPressed: () {
-                              // TODO: Save changes
+                            onPressed: () async {
+                              if (_formKey.currentState!.validate()) {
+                                await _saveProfile();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Profile updated!'),
+                                    backgroundColor: Color(0xFF00D1FF),
+                                  ),
+                                );
+                              }
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF3ABEFF),
+                              backgroundColor: const Color(0xFF00D1FF),
                               foregroundColor: Colors.white,
                               minimumSize: const Size(160, 40),
                             ),
@@ -281,11 +302,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFF232A34),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withOpacity(0.10),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -294,23 +315,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Transaction History', style: TextStyle(color: Color(0xFF232B3A), fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text('Transaction History', style: TextStyle(color: Color(0xFF00D1FF), fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   DataTable(
-                    headingRowColor: MaterialStateProperty.all(const Color(0xFFF4F8FB)),
+                    headingRowColor: MaterialStateProperty.all(Color(0xFF181C23)),
                     columns: const [
-                      DataColumn(label: Text('Date', style: TextStyle(color: Color(0xFF232B3A)))),
-                      DataColumn(label: Text('Type', style: TextStyle(color: Color(0xFF232B3A)))),
-                      DataColumn(label: Text('Amount', style: TextStyle(color: Color(0xFF232B3A)))),
-                      DataColumn(label: Text('Description', style: TextStyle(color: Color(0xFF232B3A)))),
+                      DataColumn(label: Text('Date', style: TextStyle(color: Color(0xFF00D1FF)))),
+                      DataColumn(label: Text('Type', style: TextStyle(color: Color(0xFF00D1FF)))),
+                      DataColumn(label: Text('Amount', style: TextStyle(color: Color(0xFF00D1FF)))),
+                      DataColumn(label: Text('Description', style: TextStyle(color: Color(0xFF00D1FF)))),
                     ],
                     rows: const [
                       // Example row
                       DataRow(cells: [
-                        DataCell(Text('05/13/2025', style: TextStyle(color: Colors.black54))),
-                        DataCell(Text('Purchase', style: TextStyle(color: Colors.black54))),
-                        DataCell(Text('1000', style: TextStyle(color: Colors.black54))),
-                        DataCell(Text('Bought iPhone 14', style: TextStyle(color: Colors.black54))),
+                        DataCell(Text('05/13/2025', style: TextStyle(color: Colors.white70))),
+                        DataCell(Text('Purchase', style: TextStyle(color: Colors.white70))),
+                        DataCell(Text('1000', style: TextStyle(color: Colors.white70))),
+                        DataCell(Text('Bought iPhone 14', style: TextStyle(color: Colors.white70))),
                       ]),
                     ],
                   ),
@@ -326,18 +347,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   InputDecoration _inputDecoration(String label) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: Colors.white70),
+      labelStyle: const TextStyle(color: Color(0xFF00D1FF)),
       filled: true,
-      fillColor: const Color(0xFF23252B),
+      fillColor: const Color(0xFF181C23),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Colors.white24),
+        borderSide: const BorderSide(color: Color(0xFF232A34)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Colors.blueAccent),
+        borderSide: const BorderSide(color: Color(0xFF00D1FF)),
       ),
-      hintStyle: const TextStyle(color: Colors.white54),
+      hintStyle: const TextStyle(color: Color(0xFF6C7A89)),
     );
   }
 }

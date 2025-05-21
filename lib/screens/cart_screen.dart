@@ -56,226 +56,433 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Color bgColor = const Color(0xFFF4F8FB); // Light tech background
-    final Color cardColor = Colors.white;
-    final Color accent = const Color(0xFF3ABEFF); // Tech blue
-    final Color headerColor = const Color(0xFF232B3A); // Slightly dark for header
-    final Color textColor = const Color(0xFF232B3A);
-    final Color subTextColor = Colors.grey[600]!;
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Shopping Cart'),
-        backgroundColor: accent,
+        title: const Text('Shopping Cart', style: TextStyle(color: Color(0xFF00D1FF))),
+        backgroundColor: const Color(0xFF181C23),
         foregroundColor: Colors.white,
         elevation: 2,
       ),
-      backgroundColor: bgColor,
+      backgroundColor: const Color(0xFF14171C),
       body: cartItems.isEmpty
-          ? const Center(child: Text('Your cart is empty.', style: TextStyle(color: Colors.black54)))
-          : Column(
-              children: [
-                // Table header
-                Container(
-                  decoration: BoxDecoration(
-                    color: headerColor,
-                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-                  child: Row(
-                    children: const [
-                      SizedBox(width: 80), // For image
-                      Expanded(flex: 2, child: Text('Product', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1))),
-                      Expanded(child: Text('Size', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1))),
-                      Expanded(child: Text('Color', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1))),
-                      Expanded(child: Text('Price', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1))),
-                      Expanded(child: Text('Qty', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1))),
-                      Expanded(child: Text('Total', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1))),
-                      SizedBox(width: 40), // For remove button
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: cartItems.length,
-                    itemBuilder: (context, index) {
-                      final item = cartItems[index];
-                      return Container(
-                        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: cardColor,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+          ? const Center(child: Text('Your cart is empty.', style: TextStyle(color: Colors.white54)))
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth > 700;
+                return isWide
+                    ? Padding(
+                        padding: const EdgeInsets.all(24.0),
                         child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Product image
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(item["image"], width: 70, height: 70, fit: BoxFit.cover),
-                            ),
-                            // Product name/details
+                            // Cart Items List
                             Expanded(
-                              flex: 2,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              flex: 3,
+                              child: Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF232A34),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.10),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(item["name"], style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16)),
-                                    const SizedBox(height: 2),
-                                    Text('Tech product', style: TextStyle(color: subTextColor, fontSize: 12)),
+                                    Row(
+                                      children: [
+                                        const Text('Shopping Cart', style: TextStyle(color: Color(0xFF00D1FF), fontSize: 22, fontWeight: FontWeight.bold)),
+                                        const Spacer(),
+                                        Text('${cartItems.length} Items', style: const TextStyle(color: Color(0xFF6C7A89), fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ...cartItems.asMap().entries.map((entry) {
+                                      final index = entry.key;
+                                      final item = entry.value;
+                                      return Container(
+                                        margin: const EdgeInsets.only(bottom: 16),
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF181C23),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            ClipRRect(
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Image.network(item["image"], width: 60, height: 60, fit: BoxFit.cover),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              flex: 2,
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(item["name"], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                                                  Text('Size: ${item["size"]}  Color: ${item["color"]}', style: const TextStyle(color: Color(0xFF6C7A89), fontSize: 12)),
+                                                  TextButton(
+                                                    onPressed: () => removeItem(index),
+                                                    style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                                                    child: const Text('Remove'),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            Row(
+                                              children: [
+                                                IconButton(
+                                                  icon: Icon(Icons.remove, color: Color(0xFF00D1FF)),
+                                                  onPressed: () => updateQuantity(index, -1),
+                                                ),
+                                                Text('${item["quantity"]}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                                IconButton(
+                                                  icon: Icon(Icons.add, color: Color(0xFF00D1FF)),
+                                                  onPressed: () => updateQuantity(index, 1),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Text('₱${item["price"]}', style: const TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+                                            const SizedBox(width: 16),
+                                            Text('₱${item["price"] * item["quantity"]}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                    const SizedBox(height: 8),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      style: TextButton.styleFrom(foregroundColor: const Color(0xFF00D1FF)),
+                                      child: const Text('Continue Shopping'),
+                                    ),
                                   ],
                                 ),
                               ),
                             ),
-                            // Size
+                            const SizedBox(width: 32),
+                            // Order Summary
                             Expanded(
-                              child: Text(item["size"], style: TextStyle(color: subTextColor)),
-                            ),
-                            // Color
-                            Expanded(
-                              child: Text(item["color"], style: TextStyle(color: subTextColor)),
-                            ),
-                            // Price
-                            Expanded(
-                              child: Text('${item["price"]}', style: TextStyle(color: accent, fontWeight: FontWeight.bold)),
-                            ),
-                            // Quantity stepper
-                            Expanded(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(Icons.remove_circle, color: accent.withOpacity(0.7), size: 22),
-                                    onPressed: () => updateQuantity(index, -1),
-                                  ),
-                                  Text('${item["quantity"]}', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
-                                  IconButton(
-                                    icon: Icon(Icons.add_circle, color: accent, size: 22),
-                                    onPressed: () => updateQuantity(index, 1),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Total
-                            Expanded(
-                              child: Text('${item["price"] * item["quantity"]}', style: TextStyle(color: accent, fontWeight: FontWeight.bold)),
-                            ),
-                            // Remove button
-                            SizedBox(
-                              width: 40,
-                              child: IconButton(
-                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                onPressed: () => removeItem(index),
+                              flex: 2,
+                              child: Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF232A34),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.10),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Order Summary', style: TextStyle(color: Color(0xFF00D1FF), fontSize: 20, fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text('Items', style: TextStyle(color: Colors.white)),
+                                        Text('${cartItems.length}', style: const TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text('Shipping', style: TextStyle(color: Colors.white)),
+                                        DropdownButton<double>(
+                                          value: shipping,
+                                          dropdownColor: const Color(0xFF232A34),
+                                          style: const TextStyle(color: Color(0xFF00D1FF)),
+                                          underline: Container(),
+                                          items: const [
+                                            DropdownMenuItem(value: 20.0, child: Text('Standard - ₱20', style: TextStyle(color: Color(0xFF00D1FF)))),
+                                            DropdownMenuItem(value: 50.0, child: Text('Express - ₱50', style: TextStyle(color: Color(0xFF00D1FF)))),
+                                          ],
+                                          onChanged: (val) {
+                                            if (val != null) setState(() => shipping = val);
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    TextField(
+                                      style: const TextStyle(color: Colors.white),
+                                      decoration: InputDecoration(
+                                        hintText: 'Promo code',
+                                        hintStyle: const TextStyle(color: Color(0xFF6C7A89)),
+                                        filled: true,
+                                        fillColor: const Color(0xFF181C23),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                      ),
+                                      onChanged: (val) => couponCode = val,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF00D1FF),
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        ),
+                                        onPressed: applyCoupon,
+                                        child: const Text('Apply'),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Divider(color: Colors.white24),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text('Total Cost', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                        Text('₱$grandTotal', style: const TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold, fontSize: 18)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 24),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF00D1FF),
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(vertical: 16),
+                                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                          elevation: 2,
+                                        ),
+                                        onPressed: () {
+                                          // TODO: Implement checkout logic
+                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Proceeding to checkout...')));
+                                        },
+                                        child: const Text('CHECKOUT'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      );
-                    },
-                  ),
-                ),
-                // Coupon code and summary
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              style: TextStyle(color: textColor),
-                              decoration: InputDecoration(
-                                hintText: 'Coupon Code',
-                                hintStyle: TextStyle(color: subTextColor),
-                                filled: true,
-                                fillColor: Colors.white,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide.none,
+                      )
+                    : SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              // Cart Items List
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF232A34),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.10),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Text('Shopping Cart', style: TextStyle(color: Color(0xFF00D1FF), fontSize: 22, fontWeight: FontWeight.bold)),
+                                        const Spacer(),
+                                        Text('${cartItems.length} Items', style: const TextStyle(color: Color(0xFF6C7A89), fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ...cartItems.asMap().entries.map((entry) {
+                                      final index = entry.key;
+                                      final item = entry.value;
+                                      return Container(
+                                        margin: const EdgeInsets.only(bottom: 16),
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF181C23),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            ClipRRect(
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Image.network(item["image"], width: 60, height: 60, fit: BoxFit.cover),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              flex: 2,
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(item["name"], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                                                  Text('Size: ${item["size"]}  Color: ${item["color"]}', style: const TextStyle(color: Color(0xFF6C7A89), fontSize: 12)),
+                                                  TextButton(
+                                                    onPressed: () => removeItem(index),
+                                                    style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                                                    child: const Text('Remove'),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            Row(
+                                              children: [
+                                                IconButton(
+                                                  icon: Icon(Icons.remove, color: Color(0xFF00D1FF)),
+                                                  onPressed: () => updateQuantity(index, -1),
+                                                ),
+                                                Text('${item["quantity"]}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                                IconButton(
+                                                  icon: Icon(Icons.add, color: Color(0xFF00D1FF)),
+                                                  onPressed: () => updateQuantity(index, 1),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Text('₱${item["price"]}', style: const TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+                                            const SizedBox(width: 16),
+                                            Text('₱${item["price"] * item["quantity"]}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                    const SizedBox(height: 8),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      style: TextButton.styleFrom(foregroundColor: const Color(0xFF00D1FF)),
+                                      child: const Text('Continue Shopping'),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              onChanged: (val) => couponCode = val,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: accent,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            onPressed: applyCoupon,
-                            child: const Text('Apply'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.04),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
+                              const SizedBox(height: 24),
+                              // Order Summary
+                              Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF232A34),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.10),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text('Subtotal: $subtotal', style: TextStyle(color: textColor)),
-                                Text('Shipping: $shipping', style: TextStyle(color: textColor)),
-                                const SizedBox(height: 8),
-                                Text('Grand Total: $grandTotal', style: TextStyle(color: accent, fontWeight: FontWeight.bold, fontSize: 18)),
-                              ],
-                            ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Order Summary', style: TextStyle(color: Color(0xFF00D1FF), fontSize: 20, fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text('Items', style: TextStyle(color: Colors.white)),
+                                        Text('${cartItems.length}', style: const TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text('Shipping', style: TextStyle(color: Colors.white)),
+                                        DropdownButton<double>(
+                                          value: shipping,
+                                          dropdownColor: const Color(0xFF232A34),
+                                          style: const TextStyle(color: Color(0xFF00D1FF)),
+                                          underline: Container(),
+                                          items: const [
+                                            DropdownMenuItem(value: 20.0, child: Text('Standard - ₱20', style: TextStyle(color: Color(0xFF00D1FF)))),
+                                            DropdownMenuItem(value: 50.0, child: Text('Express - ₱50', style: TextStyle(color: Color(0xFF00D1FF)))),
+                                          ],
+                                          onChanged: (val) {
+                                            if (val != null) setState(() => shipping = val);
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    TextField(
+                                      style: const TextStyle(color: Colors.white),
+                                      decoration: InputDecoration(
+                                        hintText: 'Promo code',
+                                        hintStyle: const TextStyle(color: Color(0xFF6C7A89)),
+                                        filled: true,
+                                        fillColor: const Color(0xFF181C23),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                      ),
+                                      onChanged: (val) => couponCode = val,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF00D1FF),
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        ),
+                                        onPressed: applyCoupon,
+                                        child: const Text('Apply'),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Divider(color: Colors.white24),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text('Total Cost', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                        Text('₱$grandTotal', style: const TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold, fontSize: 18)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 24),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF00D1FF),
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(vertical: 16),
+                                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                          elevation: 2,
+                                        ),
+                                        onPressed: () {
+                                          // TODO: Implement checkout logic
+                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Proceeding to checkout...')));
+                                        },
+                                        child: const Text('CHECKOUT'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: accent,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          elevation: 2,
                         ),
-                        onPressed: () {
-                          // TODO: Implement checkout logic
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Proceeding to checkout...')));
-                        },
-                        child: const Text('PROCEED TO CHECKOUT'),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                      );
+              },
             ),
     );
   }
-} 
+}
