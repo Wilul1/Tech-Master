@@ -5,6 +5,7 @@ import '../providers/product_provider.dart';
 import 'dart:math';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProductManagementScreen extends StatefulWidget {
   const ProductManagementScreen({Key? key}) : super(key: key);
@@ -44,10 +45,10 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
     }
   }
 
-  void _addProduct() {
+  void _addProduct() async {
     if (_formKey.currentState!.validate()) {
       final product = Product(
-        id: Random().nextInt(100000).toString(),
+        id: '', // Firestore will assign ID
         name: _nameController.text.trim(),
         price: double.tryParse(_priceController.text.trim()) ?? 0.0,
         imageUrl: _imageUrlController.text.trim(),
@@ -55,7 +56,7 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
         color: _colorController.text.trim(),
         isFeatured: _isFeatured,
       );
-      Provider.of<ProductProvider>(context, listen: false).addProduct(product);
+      await Provider.of<ProductProvider>(context, listen: false).addProduct(product);
       _nameController.clear();
       _priceController.clear();
       _imageUrlController.clear();
@@ -67,6 +68,12 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
       });
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Product added!')));
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    Provider.of<ProductProvider>(context, listen: false).loadProducts();
   }
 
   @override
@@ -205,4 +212,4 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
       ),
     );
   }
-} 
+}

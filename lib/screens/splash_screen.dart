@@ -56,7 +56,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F8FB),
+      backgroundColor: const Color(0xFF14171C),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -70,28 +70,48 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     scale: _scaleAnimation,
                     child: Column(
                       children: [
-                        // Logo
+                        // Neon/techy logo
                         Container(
-                          width: 120,
-                          height: 120,
+                          width: 140,
+                          height: 140,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF3ABEFF),
-                            borderRadius: BorderRadius.circular(20),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF00D1FF), Color(0xFF8F00FF)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(32),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF00D1FF).withOpacity(0.4),
+                                blurRadius: 32,
+                                spreadRadius: 2,
+                              ),
+                            ],
                           ),
-                          child: const Icon(
-                            Icons.phone_android,
-                            size: 80,
-                            color: Colors.white,
+                          child: Center(
+                            child: Icon(
+                              Icons.devices_other,
+                              size: 90,
+                              color: Colors.white.withOpacity(0.95),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 28),
                         // App Name
-                        const Text(
-                          'Tech Hub',
+                        Text(
+                          'Tech Hub Nexus',
                           style: TextStyle(
-                            fontSize: 32,
+                            fontSize: 36,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF232B3A),
+                            color: const Color(0xFF00D1FF),
+                            letterSpacing: 2,
+                            shadows: [
+                              Shadow(
+                                color: const Color(0xFF00D1FF).withOpacity(0.7),
+                                blurRadius: 16,
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -100,14 +120,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 );
               },
             ),
-            const SizedBox(height: 40),
-            // Loading Indicator
+            const SizedBox(height: 48),
+            // Neon loading indicator
             const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3ABEFF)),
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00D1FF)),
+              backgroundColor: Color(0xFF232A34),
+              strokeWidth: 5,
             ),
           ],
         ),
       ),
     );
   }
-} 
+}

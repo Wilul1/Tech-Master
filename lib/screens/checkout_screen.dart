@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'admin_panel.dart';
+import 'admin_account_creator.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({Key? key}) : super(key: key);
@@ -19,6 +21,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String? _shippingMethod = 'Standard';
   String? _paymentMethod = 'GCash';
   String _promoCode = '';
+  bool _adminCreated = false;
 
   @override
   void dispose() {
@@ -46,6 +49,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         backgroundColor: const Color(0xFF181C23),
         iconTheme: const IconThemeData(color: Color(0xFF00D1FF)),
         elevation: 2,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.admin_panel_settings, color: Color(0xFF00D1FF)),
+            tooltip: 'Admin Panel',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const AdminPanelScreen()),
+              );
+            },
+          ),
+          if (!_adminCreated)
+            IconButton(
+              icon: const Icon(Icons.person_add, color: Color(0xFF00D1FF)),
+              tooltip: 'Create Admin Account',
+              onPressed: () async {
+                final result = await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const AdminAccountCreator()),
+                );
+                if (result == true) {
+                  setState(() {
+                    _adminCreated = true;
+                  });
+                }
+              },
+            ),
+        ],
       ),
       backgroundColor: bgColor,
       body: Center(

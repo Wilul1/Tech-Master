@@ -15,13 +15,44 @@ class HomeScreen extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.user;
 
+    // Hardcoded featured products for demo
+    final List<Product> demoFeatured = [
+      Product(
+        id: 'demo1',
+        name: 'ASUS e410',
+        price: 24999,
+        imageUrl: 'assets/featured_products/asuse410.jpg',
+        size: '14"',
+        color: 'Blue',
+        isFeatured: true,
+      ),
+      Product(
+        id: 'demo2',
+        name: 'iPhone 12',
+        price: 39999,
+        imageUrl: 'assets/featured_products/iphone12.jpg',
+        size: '6.1"',
+        color: 'Black',
+        isFeatured: true,
+      ),
+      Product(
+        id: 'demo3',
+        name: 'iPhone 15',
+        price: 59999,
+        imageUrl: 'assets/featured_products/iphone15.jpg',
+        size: '6.1"',
+        color: 'Blue',
+        isFeatured: true,
+      ),
+    ];
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF181C23), // Dim, techy dark blue/gray
+        backgroundColor: const Color(0xFF181C23),
         elevation: 2,
         title: Row(
           children: [
-            Icon(Icons.devices_other, color: Color(0xFF00D1FF)), // Neon blue accent
+            Icon(Icons.devices_other, color: Color(0xFF00D1FF)),
             const SizedBox(width: 8),
             Text('TechHub', style: TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
           ],
@@ -36,7 +67,7 @@ class HomeScreen extends StatelessWidget {
                 hintText: 'Search products...',
                 hintStyle: const TextStyle(color: Color(0xFF6C7A89)),
                 filled: true,
-                fillColor: Color(0xFF232A34), // Dim input background
+                fillColor: Color(0xFF232A34),
                 prefixIcon: const Icon(Icons.search, color: Color(0xFF00D1FF)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -48,7 +79,7 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      backgroundColor: const Color(0xFF14171C), // Dim background
+      backgroundColor: const Color(0xFF14171C),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -95,7 +126,7 @@ class HomeScreen extends StatelessWidget {
                   _categoryCard('assets/brand_logos/apple.jpg', "Apple", "iPhone, iPad", Color(0xFF00D1FF)),
                   _categoryCard('assets/brand_logos/asus.jpg', "Asus", "Laptops, Phones", Color(0xFF8F00FF)),
                   _categoryCard('assets/brand_logos/lenovo.jpg', "Lenovo", "Laptops, Tablets", Color(0xFF00FFB0)),
-                  _categoryCard('assets/brand_logos/xiomi.jpg', "Xiaomi", "Phones, Tablets", Color(0xFFFF005C)),
+                  _categoryCard('assets/brand_logos/xiaomi.jpg', "Xiaomi", "Phones, Tablets", Color(0xFFFF005C)),
                 ],
               ),
               const SizedBox(height: 32),
@@ -120,14 +151,12 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
+              // Show demo featured products if Firestore is empty
               Consumer<ProductProvider>(
                 builder: (context, productProvider, _) {
-                  final featured = productProvider.featuredProducts;
-                  if (featured.isEmpty) {
-                    return const Center(
-                      child: Text('No featured products.', style: TextStyle(color: Color(0xFF6C7A89))),
-                    );
-                  }
+                  final featured = productProvider.featuredProducts.isNotEmpty
+                      ? productProvider.featuredProducts
+                      : demoFeatured;
                   return SizedBox(
                     height: 220,
                     child: ListView.builder(
@@ -135,31 +164,50 @@ class HomeScreen extends StatelessWidget {
                       itemCount: featured.length,
                       itemBuilder: (context, index) {
                         final product = featured[index];
-                        return Container(
-                          width: 180,
-                          margin: const EdgeInsets.symmetric(horizontal: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF232A34),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                        Widget imageWidget;
+                        if (product.imageUrl.startsWith('assets/')) {
+                          imageWidget = Image.asset(product.imageUrl, height: 100, fit: BoxFit.contain);
+                        } else if (product.imageUrl.isNotEmpty) {
+                          imageWidget = Image.network(product.imageUrl, height: 100, fit: BoxFit.contain);
+                        } else {
+                          imageWidget = const Icon(Icons.image, size: 100, color: Color(0xFF6C7A89));
+                        }
+                        return GestureDetector(
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: const Color(0xFF232A34),
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                               ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              if (product.imageUrl.isNotEmpty)
+                              builder: (_) => _ProductDetailSheet(product: product),
+                            );
+                          },
+                          child: Container(
+                            width: 180,
+                            margin: const EdgeInsets.symmetric(horizontal: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF232A34),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
                                 Padding(
                                   padding: const EdgeInsets.all(8.0),
-                                  child: Image.network(product.imageUrl, height: 100, fit: BoxFit.contain),
+                                  child: imageWidget,
                                 ),
-                              Text(product.name, style: const TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 8),
-                            ],
+                                Text(product.name, style: const TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 8),
+                              ],
+                            ),
                           ),
                         );
                       },
@@ -194,9 +242,9 @@ class HomeScreen extends StatelessWidget {
             label: 'Account',
           ),
         ],
-        currentIndex: 0, // Always Home for now
+        currentIndex: 0,
         onTap: (index) {
-          if (index == 0) return; // Already on Home
+          if (index == 0) return;
           if (index == 1) {
             // TODO: Navigate to Shop/Products screen
           } else if (index == 2) {
@@ -253,29 +301,109 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _productCard(String name, String imagePath, Color accentColor) {
-    return Container(
-      width: 180,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF232A34),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.10),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 32),
-          Text(name, style: TextStyle(color: accentColor, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-        ],
+// Add this widget at the bottom of the file
+class _ProductDetailSheet extends StatelessWidget {
+  final Product product;
+  const _ProductDetailSheet({required this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = const Color(0xFF00D1FF);
+    final purple = const Color(0xFF9B59B6);
+    final yellow = const Color(0xFFFFD600);
+    final red = const Color(0xFFFF005C);
+    final colorOptions = [accent, purple, yellow, red];
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF181C23),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: product.imageUrl.startsWith('assets/')
+                    ? Image.asset(product.imageUrl, height: 140)
+                    : (product.imageUrl.isNotEmpty
+                        ? Image.network(product.imageUrl, height: 140)
+                        : const Icon(Icons.image, size: 120, color: Color(0xFF6C7A89))),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(product.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+                Text('₱${product.price}', style: const TextStyle(fontSize: 20, color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('Color: ${product.color}', style: const TextStyle(color: Color(0xFF6C7A89))),
+            const SizedBox(height: 8),
+            Row(
+              children: colorOptions.map((c) => Container(
+                margin: const EdgeInsets.only(right: 8),
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: c,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+              )).toList(),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: accent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text('Size: ${product.size}', style: const TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+                ),
+                // Add more size options if needed
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Text('Product details', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            const SizedBox(height: 8),
+            const Text(
+              '• High-end tech product\n• Great value and performance\n• Sleek, modern design',
+              style: TextStyle(color: Color(0xFF6C7A89)),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 2,
+                ),
+                onPressed: () {
+                  // TODO: Implement add to cart logic
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${product.name} added to cart!')),
+                  );
+                },
+                child: const Text('Add to cart'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
