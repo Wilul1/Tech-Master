@@ -21,6 +21,9 @@ class ProductProvider extends ChangeNotifier {
         imageUrl: data['imageUrl'] ?? '',
         size: data['size'] ?? '',
         color: data['color'] ?? '',
+        brand: data['brand'] ?? '',
+        description: data['description'] ?? '',
+        category: data['category'] ?? '',
         isFeatured: data['isFeatured'] ?? false,
       ));
     }
@@ -35,6 +38,9 @@ class ProductProvider extends ChangeNotifier {
       'imageUrl': product.imageUrl,
       'size': product.size,
       'color': product.color,
+      'brand': product.brand,
+      'description': product.description,
+      'category': product.category,
       'isFeatured': product.isFeatured,
     });
     _products.add(product.copyWith(id: doc.id));
@@ -49,6 +55,9 @@ class ProductProvider extends ChangeNotifier {
       'imageUrl': newProduct.imageUrl,
       'size': newProduct.size,
       'color': newProduct.color,
+      'brand': newProduct.brand,
+      'description': newProduct.description,
+      'category': newProduct.category,
       'isFeatured': newProduct.isFeatured,
     });
     final index = _products.indexWhere((p) => p.id == id);

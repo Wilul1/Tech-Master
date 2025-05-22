@@ -54,6 +54,9 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
         imageUrl: _imageUrlController.text.trim(),
         size: _sizeController.text.trim(),
         color: _colorController.text.trim(),
+        brand: '',
+        description: '',
+        category: '',
         isFeatured: _isFeatured,
       );
       await Provider.of<ProductProvider>(context, listen: false).addProduct(product);

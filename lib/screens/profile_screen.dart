@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../widgets/custom_button.dart';
 import 'auth/login_screen.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import '../models/order_model.dart';
+import '../models/product.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -19,15 +21,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _bioController = TextEditingController();
+  final _birthdayController = TextEditingController(); // Persistent controller for birthday
   String? _gender;
   DateTime? _birthday;
   File? _profileImage;
+  List<OrderModel> _orders = [];
+  String? _paymentMethod = 'GCash';
+  List<Map<String, String>> _paymentMethods = [];
 
   @override
   void dispose() {
     _firstNameController.dispose();
     _lastNameController.dispose();
     _bioController.dispose();
+    _birthdayController.dispose();
     super.dispose();
   }
 
@@ -35,6 +42,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadProfile();
+    _loadOrders();
+    _loadPaymentMethods();
   }
 
   Future<void> _loadProfile() async {
@@ -47,6 +56,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final birthdayString = prefs.getString('profile_birthday');
       if (birthdayString != null && birthdayString.isNotEmpty) {
         _birthday = DateTime.tryParse(birthdayString);
+        if (_birthday != null) {
+          _birthdayController.text = '${_birthday!.month}/${_birthday!.day}/${_birthday!.year}';
+        }
       }
       final imagePath = prefs.getString('profile_image');
       if (imagePath != null && imagePath.isNotEmpty) {
@@ -72,14 +84,272 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _profileImage = File(pickedFile.path);
       });
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('profile_image', pickedFile.path); // Save image path immediately
     }
+  }
+
+  Future<void> _loadOrders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ordersJson = prefs.getString('orders');
+    if (ordersJson != null) {
+      final List<dynamic> decoded = jsonDecode(ordersJson);
+      setState(() {
+        _orders = decoded.map((e) => OrderModel(
+          id: e['id'],
+          date: DateTime.parse(e['date']),
+          products: (e['products'] as List).map((p) => Product(
+            id: p['id'],
+            name: p['name'],
+            brand: p['brand'],
+            price: p['price'],
+            imageUrl: p['imageUrl'],
+            description: p['description'],
+            category: p['category'],
+            size: p['size'] ?? '',
+            color: p['color'] ?? '',
+          )).toList(),
+          total: e['total'],
+          status: e['status'],
+        )).toList();
+      });
+    }
+  }
+
+  Future<void> _loadPaymentMethods() async {
+    final prefs = await SharedPreferences.getInstance();
+    final methodsJson = prefs.getString('payment_methods');
+    if (methodsJson != null) {
+      setState(() {
+        _paymentMethods = List<Map<String, String>>.from(jsonDecode(methodsJson));
+      });
+    }
+  }
+
+  Future<void> _savePaymentMethods() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('payment_methods', jsonEncode(_paymentMethods));
+  }
+
+  void _showPaymentMethodsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        String cardNumber = '';
+        String cardHolder = '';
+        String expiry = '';
+        String cvv = '';
+        String selectedType = _paymentMethod ?? 'GCash';
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            backgroundColor: const Color(0xFF232A34),
+            title: const Text('Payment Methods', style: TextStyle(color: Color(0xFF00D1FF))),
+            content: SizedBox(
+              width: 350,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: RadioListTile<String>(
+                          value: 'GCash',
+                          groupValue: selectedType,
+                          activeColor: const Color(0xFF00D1FF),
+                          title: const Text('GCash', style: TextStyle(color: Color(0xFF00D1FF))),
+                          onChanged: (val) {
+                            setState(() {
+                              selectedType = val!;
+                              _paymentMethod = val;
+                            });
+                          },
+                        ),
+                      ),
+                      Expanded(
+                        child: RadioListTile<String>(
+                          value: 'Credit Card',
+                          groupValue: selectedType,
+                          activeColor: const Color(0xFF00D1FF),
+                          title: const Text('Card', style: TextStyle(color: Color(0xFF00D1FF))),
+                          onChanged: (val) {
+                            setState(() {
+                              selectedType = val!;
+                              _paymentMethod = val;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (selectedType == 'Credit Card')
+                    Column(
+                      children: [
+                        if (_paymentMethods.isEmpty)
+                          const Text('No cards added.', style: TextStyle(color: Colors.white)),
+                        if (_paymentMethods.isNotEmpty)
+                          ..._paymentMethods.asMap().entries.map((entry) => ListTile(
+                                leading: const Icon(Icons.credit_card, color: Color(0xFF00D1FF)),
+                                title: Text('**** **** **** ${entry.value['number']?.substring(entry.value['number']!.length - 4) ?? ''}', style: const TextStyle(color: Colors.white)),
+                                subtitle: Text('${entry.value['holder']}  |  Exp: ${entry.value['expiry']}', style: const TextStyle(color: Color(0xFF6C7A89))),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                  onPressed: () {
+                                    setState(() {
+                                      _paymentMethods.removeAt(entry.key);
+                                    });
+                                    _savePaymentMethods();
+                                  },
+                                ),
+                                onTap: () {
+                                  cardNumber = entry.value['number'] ?? '';
+                                  cardHolder = entry.value['holder'] ?? '';
+                                  expiry = entry.value['expiry'] ?? '';
+                                  cvv = entry.value['cvv'] ?? '';
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      backgroundColor: const Color(0xFF232A34),
+                                      title: const Text('Edit Card', style: TextStyle(color: Color(0xFF00D1FF))),
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          TextField(
+                                            controller: TextEditingController(text: cardNumber),
+                                            style: const TextStyle(color: Colors.white),
+                                            decoration: const InputDecoration(labelText: 'Card Number', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                                            onChanged: (val) => cardNumber = val,
+                                          ),
+                                          TextField(
+                                            controller: TextEditingController(text: cardHolder),
+                                            style: const TextStyle(color: Colors.white),
+                                            decoration: const InputDecoration(labelText: 'Card Holder', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                                            onChanged: (val) => cardHolder = val,
+                                          ),
+                                          TextField(
+                                            controller: TextEditingController(text: expiry),
+                                            style: const TextStyle(color: Colors.white),
+                                            decoration: const InputDecoration(labelText: 'Expiry (MM/YY)', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                                            onChanged: (val) => expiry = val,
+                                          ),
+                                          TextField(
+                                            controller: TextEditingController(text: cvv),
+                                            style: const TextStyle(color: Colors.white),
+                                            decoration: const InputDecoration(labelText: 'CVV', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                                            onChanged: (val) => cvv = val,
+                                          ),
+                                        ],
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.of(context).pop(),
+                                          child: const Text('Cancel', style: TextStyle(color: Color(0xFF00D1FF))),
+                                        ),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00D1FF)),
+                                          onPressed: () {
+                                            setState(() {
+                                              _paymentMethods[entry.key] = {
+                                                'number': cardNumber,
+                                                'holder': cardHolder,
+                                                'expiry': expiry,
+                                                'cvv': cvv,
+                                              };
+                                            });
+                                            _savePaymentMethods();
+                                            Navigator.of(context).pop();
+                                          },
+                                          child: const Text('Save'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              )),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.add, color: Color(0xFF00D1FF)),
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF232A34), foregroundColor: Color(0xFF00D1FF), side: const BorderSide(color: Color(0xFF00D1FF))),
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                backgroundColor: const Color(0xFF232A34),
+                                title: const Text('Add Card', style: TextStyle(color: Color(0xFF00D1FF))),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    TextField(
+                                      style: const TextStyle(color: Colors.white),
+                                      decoration: const InputDecoration(labelText: 'Card Number', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                                      onChanged: (val) => cardNumber = val,
+                                    ),
+                                    TextField(
+                                      style: const TextStyle(color: Colors.white),
+                                      decoration: const InputDecoration(labelText: 'Card Holder', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                                      onChanged: (val) => cardHolder = val,
+                                    ),
+                                    TextField(
+                                      style: const TextStyle(color: Colors.white),
+                                      decoration: const InputDecoration(labelText: 'Expiry (MM/YY)', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                                      onChanged: (val) => expiry = val,
+                                    ),
+                                    TextField(
+                                      style: const TextStyle(color: Colors.white),
+                                      decoration: const InputDecoration(labelText: 'CVV', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                                      onChanged: (val) => cvv = val,
+                                    ),
+                                  ],
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(),
+                                    child: const Text('Cancel', style: TextStyle(color: Color(0xFF00D1FF))),
+                                  ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00D1FF)),
+                                    onPressed: () {
+                                      if (cardNumber.isNotEmpty && cardHolder.isNotEmpty && expiry.isNotEmpty && cvv.isNotEmpty) {
+                                        setState(() {
+                                          _paymentMethods.add({
+                                            'number': cardNumber,
+                                            'holder': cardHolder,
+                                            'expiry': expiry,
+                                            'cvv': cvv,
+                                          });
+                                        });
+                                        _savePaymentMethods();
+                                        Navigator.of(context).pop();
+                                      }
+                                    },
+                                    child: const Text('Add Card'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          label: const Text('Add Card'),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close', style: TextStyle(color: Color(0xFF00D1FF))),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.user;
-
     return Scaffold(
       backgroundColor: const Color(0xFF14171C),
       appBar: AppBar(
@@ -88,22 +358,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
         iconTheme: const IconThemeData(color: Color(0xFF00D1FF)),
         elevation: 2,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Profile Card
-                Expanded(
-                  flex: 2,
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: SingleChildScrollView( // <-- Fix overflow by wrapping with scroll view
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Profile Picture and Email
+                  CircleAvatar(
+                    radius: 54,
+                    backgroundColor: const Color(0xFF00D1FF),
+                    backgroundImage: _profileImage != null
+                        ? FileImage(_profileImage!)
+                        : (user?.photoUrl != null
+                            ? NetworkImage(user!.photoUrl!)
+                            : null) as ImageProvider<Object>?,
+                    child: (_profileImage == null && (user?.photoUrl == null))
+                        ? const Icon(Icons.person, size: 54, color: Colors.white)
+                        : null,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '@${user?.email ?? 'example.com'}',
+                    style: const TextStyle(color: Color(0xFF00D1FF), fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: _pickImage,
+                    style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF00D1FF))),
+                    child: const Text('Edit Profile', style: TextStyle(color: Color(0xFF00D1FF))),
+                  ),
+                  const SizedBox(height: 32),
+                  // Menu List
+                  Container(
                     decoration: BoxDecoration(
                       color: const Color(0xFF232A34),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.10),
@@ -114,251 +407,111 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: Column(
                       children: [
-                        // Profile Avatar
-                        CircleAvatar(
-                          radius: 60,
-                          backgroundColor: const Color(0xFF00D1FF),
-                          backgroundImage: _profileImage != null
-                              ? FileImage(_profileImage!)
-                              : (user?.photoUrl != null
-                                  ? NetworkImage(user!.photoUrl!)
-                                  : null) as ImageProvider<Object>?,
-                          child: (_profileImage == null && (user?.photoUrl == null))
-                              ? const Icon(
-                                  Icons.person,
-                                  size: 60,
-                                  color: Colors.white,
-                                )
-                              : null,
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton(
-                          onPressed: _pickImage,
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF00D1FF)),
-                          ),
-                          child: const Text('Change Photo', style: TextStyle(color: Color(0xFF00D1FF))),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '@${user?.displayName ?? 'username'}',
-                          style: const TextStyle(color: Color(0xFF00D1FF), fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Color(0xFF00D1FF),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text('Buyer', style: TextStyle(color: Colors.white)),
-                        ),
+                        _profileMenuItem(context, Icons.shopping_bag, 'My Orders', onTap: () {/* TODO: Navigate to orders */}),
+                        _profileMenuItem(context, Icons.favorite_border, 'Wishlist', onTap: () {/* TODO: Wishlist */}),
+                        _profileMenuItem(context, Icons.credit_card, 'Payment Methods', onTap: () => _showPaymentMethodsDialog(context)),
+                        _profileMenuItem(context, Icons.local_shipping, 'Shipping Address', onTap: () {/* TODO: Shipping Address */}),
+                        _profileMenuItem(context, Icons.notifications_none, 'Notifications', onTap: () {/* TODO: Notifications */}),
+                        _profileMenuItem(context, Icons.help_outline, 'Help & Support', onTap: () {/* TODO: Help & Support */}),
+                        _profileMenuItem(context, Icons.logout, 'Logout', onTap: () async {
+                          await Provider.of<AuthProvider>(context, listen: false).signOut();
+                          if (mounted) {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(builder: (_) => const LoginScreen()),
+                              (route) => false,
+                            );
+                          }
+                        }, isLogout: true),
                       ],
                     ),
-                  ),
-                ),
-                const SizedBox(width: 24),
-                // Edit Profile Form
-                Expanded(
-                  flex: 3,
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF232A34),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.10),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Edit Profile', style: TextStyle(color: Color(0xFF00D1FF), fontSize: 22, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _firstNameController,
-                                  style: const TextStyle(color: Color(0xFF00D1FF)),
-                                  decoration: _inputDecoration('First Name'),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _lastNameController,
-                                  style: const TextStyle(color: Color(0xFF00D1FF)),
-                                  decoration: _inputDecoration('Last Name'),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          TextFormField(
-                            controller: _bioController,
-                            style: const TextStyle(color: Color(0xFF00D1FF)),
-                            maxLines: 3,
-                            decoration: _inputDecoration('Bio'),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  value: _gender,
-                                  dropdownColor: const Color(0xFF232A34),
-                                  style: const TextStyle(color: Color(0xFF00D1FF)),
-                                  decoration: _inputDecoration('Gender'),
-                                  items: const [
-                                    DropdownMenuItem(value: 'Male', child: Text('Male', style: TextStyle(color: Color(0xFF00D1FF)))),
-                                    DropdownMenuItem(value: 'Female', child: Text('Female', style: TextStyle(color: Color(0xFF00D1FF)))),
-                                    DropdownMenuItem(value: 'Other', child: Text('Other', style: TextStyle(color: Color(0xFF00D1FF)))),
-                                  ],
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _gender = value;
-                                    });
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: TextFormField(
-                                  readOnly: true,
-                                  style: const TextStyle(color: Color(0xFF00D1FF)),
-                                  decoration: _inputDecoration('Birthday').copyWith(
-                                    suffixIcon: Icon(Icons.calendar_today, color: Color(0xFF00D1FF)),
-                                  ),
-                                  controller: TextEditingController(
-                                    text: _birthday == null ? '' : '${_birthday!.month}/${_birthday!.day}/${_birthday!.year}',
-                                  ),
-                                  onTap: () async {
-                                    DateTime? picked = await showDatePicker(
-                                      context: context,
-                                      initialDate: DateTime.now(),
-                                      firstDate: DateTime(1900),
-                                      lastDate: DateTime.now(),
-                                      builder: (context, child) {
-                                        return Theme(
-                                          data: ThemeData.dark().copyWith(
-                                            colorScheme: const ColorScheme.dark(
-                                              primary: Color(0xFF00D1FF),
-                                              onPrimary: Colors.white,
-                                              surface: Color(0xFF232A34),
-                                              onSurface: Color(0xFF00D1FF),
-                                            ),
-                                          ),
-                                          child: child!,
-                                        );
-                                      },
-                                    );
-                                    if (picked != null) {
-                                      setState(() {
-                                        _birthday = picked;
-                                      });
-                                    }
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () async {
-                              if (_formKey.currentState!.validate()) {
-                                await _saveProfile();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Profile updated!'),
-                                    backgroundColor: Color(0xFF00D1FF),
-                                  ),
-                                );
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF00D1FF),
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(160, 40),
-                            ),
-                            child: const Text('Save Changes'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            // Transaction History Section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: const Color(0xFF232A34),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.10),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Transaction History', style: TextStyle(color: Color(0xFF00D1FF), fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  DataTable(
-                    headingRowColor: MaterialStateProperty.all(Color(0xFF181C23)),
-                    columns: const [
-                      DataColumn(label: Text('Date', style: TextStyle(color: Color(0xFF00D1FF)))),
-                      DataColumn(label: Text('Type', style: TextStyle(color: Color(0xFF00D1FF)))),
-                      DataColumn(label: Text('Amount', style: TextStyle(color: Color(0xFF00D1FF)))),
-                      DataColumn(label: Text('Description', style: TextStyle(color: Color(0xFF00D1FF)))),
-                    ],
-                    rows: const [
-                      // Example row
-                      DataRow(cells: [
-                        DataCell(Text('05/13/2025', style: TextStyle(color: Colors.white70))),
-                        DataCell(Text('Purchase', style: TextStyle(color: Colors.white70))),
-                        DataCell(Text('1000', style: TextStyle(color: Colors.white70))),
-                        DataCell(Text('Bought iPhone 14', style: TextStyle(color: Colors.white70))),
-                      ]),
-                    ],
                   ),
                 ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  InputDecoration _inputDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: const TextStyle(color: Color(0xFF00D1FF)),
-      filled: true,
-      fillColor: const Color(0xFF181C23),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Color(0xFF232A34)),
+  Widget _profileMenuItem(BuildContext context, IconData icon, String title, {VoidCallback? onTap, bool isLogout = false}) {
+    return InkWell(
+      onTap: isLogout || onTap != null
+          ? onTap
+          : () {
+              if (title == 'My Orders') {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: const Color(0xFF232A34),
+                    title: const Text('My Orders', style: TextStyle(color: Color(0xFF00D1FF))),
+                    content: SizedBox(
+                      width: double.maxFinite,
+                      child: _orders.isEmpty
+                          ? const Text('No orders yet.', style: TextStyle(color: Colors.white))
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: _orders.length,
+                              itemBuilder: (context, index) {
+                                final order = _orders[index];
+                                return ListTile(
+                                  title: Text('Order #${order.id}', style: const TextStyle(color: Colors.white)),
+                                  subtitle: Text('Total: ₱${order.total.toStringAsFixed(2)}', style: const TextStyle(color: Color(0xFF00D1FF))),
+                                  trailing: Text(order.status, style: const TextStyle(color: Color(0xFF6C7A89))),
+                                );
+                              },
+                            ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Close', style: TextStyle(color: Color(0xFF00D1FF))),
+                      ),
+                    ],
+                  ),
+                );
+              } else {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: const Color(0xFF232A34),
+                    title: Text(title, style: const TextStyle(color: Color(0xFF00D1FF))),
+                    content: const Text('This feature is coming soon!', style: TextStyle(color: Colors.white)),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Close', style: TextStyle(color: Color(0xFF00D1FF))),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: isLogout ? Colors.transparent : const Color(0xFF232A34)),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: isLogout ? Colors.redAccent : const Color(0xFF00D1FF)),
+            const SizedBox(width: 18),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: isLogout ? Colors.redAccent : Colors.white,
+                  fontSize: 16,
+                  fontWeight: isLogout ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Color(0xFF6C7A89)),
+          ],
+        ),
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Color(0xFF00D1FF)),
-      ),
-      hintStyle: const TextStyle(color: Color(0xFF6C7A89)),
     );
   }
 }
