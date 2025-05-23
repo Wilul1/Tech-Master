@@ -22,12 +22,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _lastNameController = TextEditingController();
   final _bioController = TextEditingController();
   final _birthdayController = TextEditingController(); // Persistent controller for birthday
+  final _addressController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _provinceController = TextEditingController();
+  final _postalController = TextEditingController();
   String? _gender;
   DateTime? _birthday;
   File? _profileImage;
   List<OrderModel> _orders = [];
   String? _paymentMethod = 'GCash';
   List<Map<String, String>> _paymentMethods = [];
+  List<Map<String, dynamic>> _wishlist = [];
+  List<String> _notifications = [];
 
   @override
   void dispose() {
@@ -35,15 +41,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _lastNameController.dispose();
     _bioController.dispose();
     _birthdayController.dispose();
+    _addressController.dispose();
+    _cityController.dispose();
+    _provinceController.dispose();
+    _postalController.dispose();
     super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadProfile();
-    _loadOrders();
-    _loadPaymentMethods();
   }
 
   Future<void> _loadProfile() async {
@@ -64,6 +66,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (imagePath != null && imagePath.isNotEmpty) {
         _profileImage = File(imagePath);
       }
+      _addressController.text = prefs.getString('profile_address') ?? '';
+      _cityController.text = prefs.getString('profile_city') ?? '';
+      _provinceController.text = prefs.getString('profile_province') ?? '';
+      _postalController.text = prefs.getString('profile_postal') ?? '';
     });
   }
 
@@ -75,6 +81,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await prefs.setString('profile_gender', _gender ?? '');
     await prefs.setString('profile_birthday', _birthday?.toIso8601String() ?? '');
     await prefs.setString('profile_image', _profileImage?.path ?? '');
+    await prefs.setString('profile_address', _addressController.text);
+    await prefs.setString('profile_city', _cityController.text);
+    await prefs.setString('profile_province', _provinceController.text);
+    await prefs.setString('profile_postal', _postalController.text);
   }
 
   Future<void> _pickImage() async {
@@ -131,8 +141,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await prefs.setString('payment_methods', jsonEncode(_paymentMethods));
   }
 
-  void _showPaymentMethodsDialog(BuildContext context) {
-    showDialog(
+  Future<void> _loadWishlist() async {
+    final prefs = await SharedPreferences.getInstance();
+    final wishlistJson = prefs.getString('wishlist');
+    if (wishlistJson != null) {
+      setState(() {
+        _wishlist = List<Map<String, dynamic>>.from(jsonDecode(wishlistJson));
+      });
+    }
+  }
+
+  Future<void> _saveWishlist() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('wishlist', jsonEncode(_wishlist));
+  }
+
+  Future<void> _loadNotifications() async {
+    final prefs = await SharedPreferences.getInstance();
+    final notifJson = prefs.getString('notifications');
+    if (notifJson != null) {
+      setState(() {
+        _notifications = List<String>.from(jsonDecode(notifJson));
+      });
+    } else {
+      // Demo notifications
+      setState(() {
+        _notifications = [
+          'Your order #12345 has shipped!',
+          'Flash Sale: Up to 50% off on select tech!',
+          'Welcome to Tech Hub Nexus!'
+        ];
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+    _loadOrders();
+    _loadPaymentMethods();
+    _loadWishlist();
+    _loadNotifications();
+  }
+
+  Future<void> _showPaymentMethodsDialog(BuildContext context) async {
+    await showDialog(
       context: context,
       builder: (context) {
         String cardNumber = '';
@@ -143,191 +197,283 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return StatefulBuilder(
           builder: (context, setState) => AlertDialog(
             backgroundColor: const Color(0xFF232A34),
-            title: const Text('Payment Methods', style: TextStyle(color: Color(0xFF00D1FF))),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: const [
+                Icon(Icons.credit_card, color: Color(0xFF00D1FF)),
+                SizedBox(width: 10),
+                Text('Payment Methods', style: TextStyle(color: Color(0xFF00D1FF))),
+              ],
+            ),
             content: SizedBox(
-              width: 350,
+              width: 380,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: RadioListTile<String>(
-                          value: 'GCash',
-                          groupValue: selectedType,
-                          activeColor: const Color(0xFF00D1FF),
-                          title: const Text('GCash', style: TextStyle(color: Color(0xFF00D1FF))),
-                          onChanged: (val) {
-                            setState(() {
-                              selectedType = val!;
-                              _paymentMethod = val;
-                            });
-                          },
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF181C23),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: RadioListTile<String>(
+                            value: 'GCash',
+                            groupValue: selectedType,
+                            activeColor: const Color(0xFF00D1FF),
+                            title: Row(
+                              children: [
+                                Image.asset('assets/brand_logos/gcash.png', width: 28, height: 28, errorBuilder: (_, __, ___) => Icon(Icons.account_balance_wallet, color: Color(0xFF00D1FF))),
+                                const SizedBox(width: 8),
+                                const Text('GCash', style: TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            subtitle: const Text('Pay instantly with your GCash wallet', style: TextStyle(color: Color(0xFF6C7A89), fontSize: 12)),
+                            onChanged: (val) {
+                              setState(() {
+                                selectedType = val!;
+                                _paymentMethod = val;
+                              });
+                            },
+                          ),
                         ),
-                      ),
-                      Expanded(
-                        child: RadioListTile<String>(
-                          value: 'Credit Card',
-                          groupValue: selectedType,
-                          activeColor: const Color(0xFF00D1FF),
-                          title: const Text('Card', style: TextStyle(color: Color(0xFF00D1FF))),
-                          onChanged: (val) {
-                            setState(() {
-                              selectedType = val!;
-                              _paymentMethod = val;
-                            });
-                          },
+                        Expanded(
+                          child: RadioListTile<String>(
+                            value: 'Credit Card',
+                            groupValue: selectedType,
+                            activeColor: const Color(0xFF00D1FF),
+                            title: Row(
+                              children: [
+                                Icon(Icons.credit_card, color: Color(0xFF00D1FF)),
+                                const SizedBox(width: 8),
+                                const Text('Card', style: TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            subtitle: const Text('Visa, MasterCard, JCB, Amex', style: TextStyle(color: Color(0xFF6C7A89), fontSize: 12)),
+                            onChanged: (val) {
+                              setState(() {
+                                selectedType = val!;
+                                _paymentMethod = val;
+                              });
+                            },
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  const SizedBox(height: 18),
+                  if (selectedType == 'GCash')
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF181C23),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Color(0xFF00D1FF)),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text('You will be redirected to GCash for secure payment.', style: TextStyle(color: Color(0xFF6C7A89), fontSize: 13)),
+                          ),
+                        ],
+                      ),
+                    ),
                   if (selectedType == 'Credit Card')
                     Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (_paymentMethods.isEmpty)
-                          const Text('No cards added.', style: TextStyle(color: Colors.white)),
-                        if (_paymentMethods.isNotEmpty)
-                          ..._paymentMethods.asMap().entries.map((entry) => ListTile(
-                                leading: const Icon(Icons.credit_card, color: Color(0xFF00D1FF)),
-                                title: Text('**** **** **** ${entry.value['number']?.substring(entry.value['number']!.length - 4) ?? ''}', style: const TextStyle(color: Colors.white)),
-                                subtitle: Text('${entry.value['holder']}  |  Exp: ${entry.value['expiry']}', style: const TextStyle(color: Color(0xFF6C7A89))),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.redAccent),
-                                  onPressed: () {
-                                    setState(() {
-                                      _paymentMethods.removeAt(entry.key);
-                                    });
-                                    _savePaymentMethods();
-                                  },
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF181C23),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.info_outline, color: Color(0xFF00D1FF)),
+                                const SizedBox(width: 10),
+                                const Expanded(
+                                  child: Text('No cards added yet. Add a card to pay with Visa, MasterCard, JCB, or Amex.', style: TextStyle(color: Color(0xFF6C7A89), fontSize: 13)),
                                 ),
-                                onTap: () {
-                                  cardNumber = entry.value['number'] ?? '';
-                                  cardHolder = entry.value['holder'] ?? '';
-                                  expiry = entry.value['expiry'] ?? '';
-                                  cvv = entry.value['cvv'] ?? '';
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      backgroundColor: const Color(0xFF232A34),
-                                      title: const Text('Edit Card', style: TextStyle(color: Color(0xFF00D1FF))),
-                                      content: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          TextField(
-                                            controller: TextEditingController(text: cardNumber),
-                                            style: const TextStyle(color: Colors.white),
-                                            decoration: const InputDecoration(labelText: 'Card Number', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
-                                            onChanged: (val) => cardNumber = val,
-                                          ),
-                                          TextField(
-                                            controller: TextEditingController(text: cardHolder),
-                                            style: const TextStyle(color: Colors.white),
-                                            decoration: const InputDecoration(labelText: 'Card Holder', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
-                                            onChanged: (val) => cardHolder = val,
-                                          ),
-                                          TextField(
-                                            controller: TextEditingController(text: expiry),
-                                            style: const TextStyle(color: Colors.white),
-                                            decoration: const InputDecoration(labelText: 'Expiry (MM/YY)', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
-                                            onChanged: (val) => expiry = val,
-                                          ),
-                                          TextField(
-                                            controller: TextEditingController(text: cvv),
-                                            style: const TextStyle(color: Colors.white),
-                                            decoration: const InputDecoration(labelText: 'CVV', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
-                                            onChanged: (val) => cvv = val,
-                                          ),
-                                        ],
+                              ],
+                            ),
+                          ),
+                        if (_paymentMethods.isNotEmpty)
+                          ..._paymentMethods.asMap().entries.map((entry) => Card(
+                                color: const Color(0xFF181C23),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                margin: const EdgeInsets.symmetric(vertical: 6),
+                                child: ListTile(
+                                  leading: Icon(Icons.credit_card, color: Color(0xFF00D1FF)),
+                                  title: Text('**** **** **** ${entry.value['number']?.substring(entry.value['number']!.length - 4) ?? ''}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  subtitle: Text('${entry.value['holder']}  |  Exp: ${entry.value['expiry']}', style: const TextStyle(color: Color(0xFF6C7A89))),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit, color: Color(0xFF00D1FF)),
+                                        tooltip: 'Edit',
+                                        onPressed: () {
+                                          cardNumber = entry.value['number'] ?? '';
+                                          cardHolder = entry.value['holder'] ?? '';
+                                          expiry = entry.value['expiry'] ?? '';
+                                          cvv = entry.value['cvv'] ?? '';
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              backgroundColor: const Color(0xFF232A34),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                              title: const Text('Edit Card', style: TextStyle(color: Color(0xFF00D1FF))),
+                                              content: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  TextField(
+                                                    controller: TextEditingController(text: cardNumber),
+                                                    style: const TextStyle(color: Colors.white),
+                                                    decoration: const InputDecoration(labelText: 'Card Number', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                                                    onChanged: (val) => cardNumber = val,
+                                                  ),
+                                                  TextField(
+                                                    controller: TextEditingController(text: cardHolder),
+                                                    style: const TextStyle(color: Colors.white),
+                                                    decoration: const InputDecoration(labelText: 'Card Holder', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                                                    onChanged: (val) => cardHolder = val,
+                                                  ),
+                                                  TextField(
+                                                    controller: TextEditingController(text: expiry),
+                                                    style: const TextStyle(color: Colors.white),
+                                                    decoration: const InputDecoration(labelText: 'Expiry (MM/YY)', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                                                    onChanged: (val) => expiry = val,
+                                                  ),
+                                                  TextField(
+                                                    controller: TextEditingController(text: cvv),
+                                                    style: const TextStyle(color: Colors.white),
+                                                    decoration: const InputDecoration(labelText: 'CVV', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                                                    onChanged: (val) => cvv = val,
+                                                  ),
+                                                ],
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () => Navigator.of(context).pop(),
+                                                  child: const Text('Cancel', style: TextStyle(color: Color(0xFF00D1FF))),
+                                                ),
+                                                ElevatedButton(
+                                                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00D1FF)),
+                                                  onPressed: () {
+                                                    setState(() {
+                                                      _paymentMethods[entry.key] = {
+                                                        'number': cardNumber,
+                                                        'holder': cardHolder,
+                                                        'expiry': expiry,
+                                                        'cvv': cvv,
+                                                      };
+                                                    });
+                                                    _savePaymentMethods();
+                                                    Navigator.of(context).pop();
+                                                  },
+                                                  child: const Text('Save'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
                                       ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () => Navigator.of(context).pop(),
-                                          child: const Text('Cancel', style: TextStyle(color: Color(0xFF00D1FF))),
-                                        ),
-                                        ElevatedButton(
-                                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00D1FF)),
-                                          onPressed: () {
-                                            setState(() {
-                                              _paymentMethods[entry.key] = {
-                                                'number': cardNumber,
-                                                'holder': cardHolder,
-                                                'expiry': expiry,
-                                                'cvv': cvv,
-                                              };
-                                            });
-                                            _savePaymentMethods();
-                                            Navigator.of(context).pop();
-                                          },
-                                          child: const Text('Save'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
+                                      IconButton(
+                                        icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                        tooltip: 'Remove',
+                                        onPressed: () {
+                                          setState(() {
+                                            _paymentMethods.removeAt(entry.key);
+                                          });
+                                          _savePaymentMethods();
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               )),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.add, color: Color(0xFF00D1FF)),
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF232A34), foregroundColor: Color(0xFF00D1FF), side: const BorderSide(color: Color(0xFF00D1FF))),
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                backgroundColor: const Color(0xFF232A34),
-                                title: const Text('Add Card', style: TextStyle(color: Color(0xFF00D1FF))),
-                                content: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    TextField(
-                                      style: const TextStyle(color: Colors.white),
-                                      decoration: const InputDecoration(labelText: 'Card Number', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
-                                      onChanged: (val) => cardNumber = val,
+                        const SizedBox(height: 12),
+                        Center(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.add, color: Color(0xFF00D1FF)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF232A34),
+                              foregroundColor: Color(0xFF00D1FF),
+                              side: const BorderSide(color: Color(0xFF00D1FF)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  backgroundColor: const Color(0xFF232A34),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  title: const Text('Add Card', style: TextStyle(color: Color(0xFF00D1FF))),
+                                  content: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      TextField(
+                                        style: const TextStyle(color: Colors.white),
+                                        decoration: const InputDecoration(labelText: 'Card Number', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                                        onChanged: (val) => cardNumber = val,
+                                      ),
+                                      TextField(
+                                        style: const TextStyle(color: Colors.white),
+                                        decoration: const InputDecoration(labelText: 'Card Holder', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                                        onChanged: (val) => cardHolder = val,
+                                      ),
+                                      TextField(
+                                        style: const TextStyle(color: Colors.white),
+                                        decoration: const InputDecoration(labelText: 'Expiry (MM/YY)', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                                        onChanged: (val) => expiry = val,
+                                      ),
+                                      TextField(
+                                        style: const TextStyle(color: Colors.white),
+                                        decoration: const InputDecoration(labelText: 'CVV', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                                        onChanged: (val) => cvv = val,
+                                      ),
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(context).pop(),
+                                      child: const Text('Cancel', style: TextStyle(color: Color(0xFF00D1FF))),
                                     ),
-                                    TextField(
-                                      style: const TextStyle(color: Colors.white),
-                                      decoration: const InputDecoration(labelText: 'Card Holder', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
-                                      onChanged: (val) => cardHolder = val,
-                                    ),
-                                    TextField(
-                                      style: const TextStyle(color: Colors.white),
-                                      decoration: const InputDecoration(labelText: 'Expiry (MM/YY)', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
-                                      onChanged: (val) => expiry = val,
-                                    ),
-                                    TextField(
-                                      style: const TextStyle(color: Colors.white),
-                                      decoration: const InputDecoration(labelText: 'CVV', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
-                                      onChanged: (val) => cvv = val,
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00D1FF)),
+                                      onPressed: () {
+                                        if (cardNumber.isNotEmpty && cardHolder.isNotEmpty && expiry.isNotEmpty && cvv.isNotEmpty) {
+                                          setState(() {
+                                            _paymentMethods.add({
+                                              'number': cardNumber,
+                                              'holder': cardHolder,
+                                              'expiry': expiry,
+                                              'cvv': cvv,
+                                            });
+                                          });
+                                          _savePaymentMethods();
+                                          Navigator.of(context).pop();
+                                        }
+                                      },
+                                      child: const Text('Add Card'),
                                     ),
                                   ],
                                 ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.of(context).pop(),
-                                    child: const Text('Cancel', style: TextStyle(color: Color(0xFF00D1FF))),
-                                  ),
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00D1FF)),
-                                    onPressed: () {
-                                      if (cardNumber.isNotEmpty && cardHolder.isNotEmpty && expiry.isNotEmpty && cvv.isNotEmpty) {
-                                        setState(() {
-                                          _paymentMethods.add({
-                                            'number': cardNumber,
-                                            'holder': cardHolder,
-                                            'expiry': expiry,
-                                            'cvv': cvv,
-                                          });
-                                        });
-                                        _savePaymentMethods();
-                                        Navigator.of(context).pop();
-                                      }
-                                    },
-                                    child: const Text('Add Card'),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                          label: const Text('Add Card'),
+                              );
+                            },
+                            label: const Text('Add Card'),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Text('Your card details are securely stored and encrypted. Only you can manage your cards.', style: TextStyle(color: Color(0xFF6C7A89), fontSize: 12), textAlign: TextAlign.center),
                         ),
                       ],
                     ),
@@ -343,6 +489,186 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
       },
+    );
+  }
+
+  void _showShippingAddressDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final _shippingAddressController = TextEditingController(text: _addressController.text);
+        final _cityControllerDialog = TextEditingController(text: _cityController.text);
+        final _provinceControllerDialog = TextEditingController(text: _provinceController.text);
+        final _postalControllerDialog = TextEditingController(text: _postalController.text);
+        return AlertDialog(
+          backgroundColor: const Color(0xFF232A34),
+          title: const Text('Shipping Address', style: TextStyle(color: Color(0xFF00D1FF))),
+          content: SizedBox(
+            width: 350,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _shippingAddressController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(labelText: 'Address', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                ),
+                TextField(
+                  controller: _cityControllerDialog,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(labelText: 'City', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                ),
+                TextField(
+                  controller: _provinceControllerDialog,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(labelText: 'Province', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                ),
+                TextField(
+                  controller: _postalControllerDialog,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(labelText: 'Postal Code', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFF00D1FF))),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00D1FF)),
+              onPressed: () {
+                setState(() {
+                  _addressController.text = _shippingAddressController.text;
+                  _cityController.text = _cityControllerDialog.text;
+                  _provinceController.text = _provinceControllerDialog.text;
+                  _postalController.text = _postalControllerDialog.text;
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showHelpSupportDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF232A34),
+        title: const Text('Help & Support', style: TextStyle(color: Color(0xFF00D1FF))),
+        content: SizedBox(
+          width: 350,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text('For assistance, contact us:', style: TextStyle(color: Colors.white)),
+              SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(Icons.email, color: Color(0xFF00D1FF)),
+                  SizedBox(width: 8),
+                  Text('support@techhubnexus.com', style: TextStyle(color: Color(0xFF00D1FF))),
+                ],
+              ),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.phone, color: Color(0xFF00D1FF)),
+                  SizedBox(width: 8),
+                  Text('+63 912 345 6789', style: TextStyle(color: Color(0xFF00D1FF))),
+                ],
+              ),
+              SizedBox(height: 16),
+              Text('You can also reach us via the in-app chat or FAQ section.', style: TextStyle(color: Color(0xFF6C7A89))),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close', style: TextStyle(color: Color(0xFF00D1FF))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showWishlistDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF232A34),
+        title: const Text('Wishlist', style: TextStyle(color: Color(0xFF00D1FF))),
+        content: SizedBox(
+          width: 350,
+          child: _wishlist.isEmpty
+              ? const Text('Your wishlist is empty.', style: TextStyle(color: Colors.white))
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _wishlist.length,
+                  itemBuilder: (context, index) {
+                    final item = _wishlist[index];
+                    return ListTile(
+                      leading: item['imageUrl'] != null && item['imageUrl'].toString().isNotEmpty
+                          ? Image.network(item['imageUrl'], width: 40, height: 40, fit: BoxFit.cover)
+                          : const Icon(Icons.favorite, color: Color(0xFF00D1FF)),
+                      title: Text(item['name'] ?? '', style: const TextStyle(color: Colors.white)),
+                      subtitle: Text(item['brand'] ?? '', style: const TextStyle(color: Color(0xFF6C7A89))),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.redAccent),
+                        onPressed: () {
+                          setState(() {
+                            _wishlist.removeAt(index);
+                          });
+                          _saveWishlist();
+                        },
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close', style: TextStyle(color: Color(0xFF00D1FF))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showNotificationsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF232A34),
+        title: const Text('Notifications', style: TextStyle(color: Color(0xFF00D1FF))),
+        content: SizedBox(
+          width: 350,
+          child: _notifications.isEmpty
+              ? const Text('No notifications yet.', style: TextStyle(color: Colors.white))
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _notifications.length,
+                  itemBuilder: (context, index) => ListTile(
+                    leading: const Icon(Icons.notifications, color: Color(0xFF00D1FF)),
+                    title: Text(_notifications[index], style: const TextStyle(color: Colors.white)),
+                  ),
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close', style: TextStyle(color: Color(0xFF00D1FF))),
+          ),
+        ],
+      ),
     );
   }
 
@@ -408,11 +734,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       children: [
                         _profileMenuItem(context, Icons.shopping_bag, 'My Orders', onTap: () {/* TODO: Navigate to orders */}),
-                        _profileMenuItem(context, Icons.favorite_border, 'Wishlist', onTap: () {/* TODO: Wishlist */}),
+                        _profileMenuItem(context, Icons.favorite_border, 'Wishlist', onTap: () => _showWishlistDialog(context)),
                         _profileMenuItem(context, Icons.credit_card, 'Payment Methods', onTap: () => _showPaymentMethodsDialog(context)),
-                        _profileMenuItem(context, Icons.local_shipping, 'Shipping Address', onTap: () {/* TODO: Shipping Address */}),
-                        _profileMenuItem(context, Icons.notifications_none, 'Notifications', onTap: () {/* TODO: Notifications */}),
-                        _profileMenuItem(context, Icons.help_outline, 'Help & Support', onTap: () {/* TODO: Help & Support */}),
+                        _profileMenuItem(context, Icons.local_shipping, 'Shipping Address', onTap: () => _showShippingAddressDialog(context)),
+                        _profileMenuItem(context, Icons.notifications_none, 'Notifications', onTap: () => _showNotificationsDialog(context)),
+                        _profileMenuItem(context, Icons.help_outline, 'Help & Support', onTap: () => _showHelpSupportDialog(context)),
                         _profileMenuItem(context, Icons.logout, 'Logout', onTap: () async {
                           await Provider.of<AuthProvider>(context, listen: false).signOut();
                           if (mounted) {
