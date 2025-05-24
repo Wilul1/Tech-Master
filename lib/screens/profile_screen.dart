@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/order_model.dart';
 import '../models/product.dart';
+import 'admin_panel.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -733,6 +734,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: Column(
                       children: [
+                        _profileMenuItem(
+                          context,
+                          user?.email == 'admin@techhub.com' ? Icons.admin_panel_settings : Icons.person,
+                          user?.email == 'admin@techhub.com' ? 'Admin Panel' : 'Profile',
+                          onTap: user?.email == 'admin@techhub.com'
+                              ? () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (_) => const AdminPanelScreen()),
+                                  );
+                                }
+                              : null,
+                        ),
                         _profileMenuItem(context, Icons.shopping_bag, 'My Orders', onTap: () {/* TODO: Navigate to orders */}),
                         _profileMenuItem(context, Icons.favorite_border, 'Wishlist', onTap: () => _showWishlistDialog(context)),
                         _profileMenuItem(context, Icons.credit_card, 'Payment Methods', onTap: () => _showPaymentMethodsDialog(context)),

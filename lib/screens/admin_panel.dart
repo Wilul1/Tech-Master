@@ -17,52 +17,25 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  // Admin login state
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  bool _isLoggedIn = false;
-  bool _isLoading = false;
-  String? _loginError;
-
   // Product management state
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   File? _pickedImage;
   String? _imageUrl;
   String? _editProductId;
+  bool isLoading = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
     _nameController.dispose();
     _descController.dispose();
     _priceController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
-  }
-
-  Future<void> _login() async {
-    setState(() {
-      _isLoading = true;
-      _loginError = null;
-    });
-    try {
-      await _auth.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-      setState(() => _isLoggedIn = true);
-    } catch (e) {
-      setState(() => _loginError = 'Login failed: ${e.toString()}');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _logout() async {
-    await _auth.signOut();
-    setState(() => _isLoggedIn = false);
   }
 
   Future<void> _pickImage() async {
@@ -80,7 +53,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   Future<void> _addOrEditProduct() async {
-    setState(() => _isLoading = true);
+    setState(() => isLoading = true);
     try {
       String? imageUrl = _imageUrl;
       if (_pickedImage != null) {
@@ -102,7 +75,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
-      setState(() => _isLoading = false);
+      setState(() => isLoading = false);
     }
   }
 
@@ -129,154 +102,303 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     await _firestore.collection('products').doc(id).delete();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Panel'),
-        actions: _isLoggedIn
-            ? [IconButton(icon: const Icon(Icons.logout), onPressed: _logout)]
-            : null,
-      ),
-      body: _isLoggedIn ? _buildAdminPanel() : _buildLoginForm(),
-    );
+  void _logout() async {
+    await _auth.signOut();
+    setState(() {});
   }
 
-  Widget _buildLoginForm() {
-    return Center(
-      child: Card(
-        margin: const EdgeInsets.all(32),
+  @override
+  Widget build(BuildContext context) {
+    // Use the controllers to check for hardcoded admin credentials
+    if (_emailController.text.trim() == 'admin@techhub.com' && _passwordController.text == 'admin123') {
+      return Scaffold(
+        backgroundColor: const Color(0xFF14171C),
+        body: Row(
+          children: [
+            // Sidebar
+            Container(
+              width: 220,
+              height: double.infinity,
+              decoration: const BoxDecoration(
+                color: Color(0xFF181C23),
+                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 32),
+                  Row(
+                    children: [
+                      const SizedBox(width: 18),
+                      Image.asset('assets/banners/techhubnexus.png', width: 36, height: 36, errorBuilder: (_, __, ___) => Icon(Icons.dashboard, color: Color(0xFF00D1FF))),
+                      const SizedBox(width: 10),
+                      const Text('TechHub Admin', style: TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold, fontSize: 18)),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  _adminNavItem(Icons.dashboard, 'Dashboard', selected: true),
+                  _adminNavItem(Icons.people, 'Users', badge: 12),
+                  _adminNavItem(Icons.shopping_bag, 'Products'),
+                  _adminNavItem(Icons.notifications, 'Notifications', badge: 3),
+                  _adminNavItem(Icons.settings, 'Settings'),
+                  _adminNavItem(Icons.bar_chart, 'Logs & Reports'),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.home, color: Color(0xFF00D1FF)),
+                        label: const Text('View Homepage', style: TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF232A34),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          side: const BorderSide(color: Color(0xFF00D1FF)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          elevation: 0,
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+                        },
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  _adminNavItem(Icons.logout, 'Logout', onTap: () {
+                    _emailController.clear();
+                    _passwordController.clear();
+                    setState(() {});
+                  }),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+            // Main content
+            Expanded(
+              child: Container(
+                color: const Color(0xFF181C23),
+                child: Column(
+                  children: [
+                    // Top bar
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF232A34),
+                        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                      ),
+                      child: Row(
+                        children: [
+                          const Text('Dashboard', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22)),
+                          const Spacer(),
+                          SizedBox(
+                            width: 320,
+                            child: TextField(
+                              decoration: InputDecoration(
+                                hintText: 'Search anything... ',
+                                hintStyle: const TextStyle(color: Color(0xFF6C7A89)),
+                                prefixIcon: const Icon(Icons.search, color: Color(0xFF00D1FF)),
+                                filled: true,
+                                fillColor: const Color(0xFF181C23),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 18),
+                          Stack(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.notifications, color: Color(0xFF00D1FF)),
+                                onPressed: () {},
+                              ),
+                              Positioned(
+                                right: 8,
+                                top: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.redAccent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Text('3', style: TextStyle(color: Colors.white, fontSize: 10)),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: 8),
+                          CircleAvatar(
+                            backgroundColor: const Color(0xFF00D1FF),
+                            child: const Icon(Icons.person, color: Colors.white),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text('Admin', style: TextStyle(color: Colors.white)),
+                          const Icon(Icons.keyboard_arrow_down, color: Color(0xFF6C7A89)),
+                        ],
+                      ),
+                    ),
+                    // Dashboard cards
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: GridView.count(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 32,
+                          mainAxisSpacing: 32,
+                          childAspectRatio: 2.2,
+                          children: [
+                            _dashboardCard(Icons.person, 'Total Users', '12,845', '+12.5%', Colors.blue),
+                            _dashboardCard(Icons.people, 'Active Users', '8,932', '+8.2%', Colors.green),
+                            _dashboardCard(Icons.shopping_bag, 'Products', '1,234', '+23.1%', Colors.purple),
+                            _dashboardCard(Icons.attach_money, 'Revenue', '₱1,200,000', '+5.7%', Colors.orange),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    // Show login form if not admin credentials
+    return Scaffold(
+      backgroundColor: const Color(0xFF14171C),
+      body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Admin Login', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              TextField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
+          padding: const EdgeInsets.all(32.0),
+          child: Card(
+            color: const Color(0xFF181C23),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Admin Login', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24)),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: _emailController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      labelStyle: const TextStyle(color: Color(0xFF6C7A89)),
+                      filled: true,
+                      fillColor: const Color(0xFF232A34),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      labelStyle: const TextStyle(color: Color(0xFF6C7A89)),
+                      filled: true,
+                      fillColor: const Color(0xFF232A34),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => setState(() {}),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF00D1FF),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Login', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                  ),
+                ],
               ),
-              TextField(
-                controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'Password'),
-                obscureText: true,
-              ),
-              if (_loginError != null) ...[
-                const SizedBox(height: 8),
-                Text(_loginError!, style: const TextStyle(color: Colors.red)),
-              ],
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _login,
-                child: _isLoading ? const CircularProgressIndicator() : const Text('Login'),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildAdminPanel() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Product Management', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'Product Name'),
-                  ),
-                  TextField(
-                    controller: _descController,
-                    decoration: const InputDecoration(labelText: 'Description'),
-                  ),
-                  TextField(
-                    controller: _priceController,
-                    decoration: const InputDecoration(labelText: 'Price'),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: _pickImage,
-                        icon: const Icon(Icons.image),
-                        label: const Text('Pick Image'),
-                      ),
-                      if (_pickedImage != null || _imageUrl != null) ...[
-                        const SizedBox(width: 12),
-                        _pickedImage != null
-                            ? Image.file(_pickedImage!, width: 60, height: 60)
-                            : Image.network(_imageUrl!, width: 60, height: 60),
-                      ]
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      ElevatedButton(
-                        onPressed: _isLoading ? null : _addOrEditProduct,
-                        child: Text(_editProductId == null ? 'Add Product' : 'Update Product'),
-                      ),
-                      if (_editProductId != null)
-                        TextButton(
-                          onPressed: _clearProductForm,
-                          child: const Text('Cancel'),
-                        ),
-                    ],
-                  ),
-                ],
+  Widget _adminNavItem(IconData icon, String label, {bool selected = false, int? badge, VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF232A34) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: selected ? const Color(0xFF00D1FF) : Colors.white),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(label, style: TextStyle(color: selected ? const Color(0xFF00D1FF) : Colors.white, fontWeight: FontWeight.w600)),
+            ),
+            if (badge != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text('$badge', style: const TextStyle(color: Colors.white, fontSize: 12)),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _dashboardCard(IconData icon, String label, String value, String change, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF232A34),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8)],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: color, size: 32),
+          ),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(label, style: const TextStyle(color: Color(0xFF6C7A89), fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24)),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
-          const Text('Product List', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _firestore.collection('products').orderBy('createdAt', descending: true).snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(child: Text('No products found.'));
-                }
-                return ListView(
-                  children: snapshot.data!.docs.map((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
-                    return ListTile(
-                      leading: data['imageUrl'] != null
-                          ? Image.network(data['imageUrl'], width: 50, height: 50, fit: BoxFit.cover)
-                          : const Icon(Icons.image_not_supported),
-                      title: Text(data['name'] ?? ''),
-                      subtitle: Text('₱${data['price'] ?? 0.0}'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit),
-                            onPressed: () => _editProduct(doc),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete),
-                            onPressed: () => _deleteProduct(doc.id),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(change, style: const TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+            ],
           ),
         ],
       ),

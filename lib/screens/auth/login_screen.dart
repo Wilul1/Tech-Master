@@ -7,6 +7,7 @@ import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import '../home_screen.dart';
 import '../admin_screen.dart';
+import '../admin_panel.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -42,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const SnackBar(content: Text('Logged in as Admin!'), backgroundColor: Colors.green),
         );
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const AdminScreen()),
+          MaterialPageRoute(builder: (context) => const AdminPanelScreen()),
         );
         return;
       }

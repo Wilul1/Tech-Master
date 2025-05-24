@@ -7,6 +7,7 @@ import 'providers/product_provider.dart';
 import 'screens/auth/auth_wrapper.dart';
 import 'screens/splash_screen.dart';
 import 'screens/admin_panel.dart'; // Import the admin panel screen
+import 'screens/home_screen.dart'; // Import the home screen
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +39,7 @@ class MyApp extends StatelessWidget {
         // Add a route for the admin panel (example):
         routes: {
           '/admin': (context) => const AdminPanelScreen(),
+          '/home': (context) => const HomeScreen(), // <-- Add this route
         },
         // Or add a button somewhere in your app to navigate to AdminPanelScreen
       ),
