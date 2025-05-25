@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Product {
   final String id;
   final String name;
@@ -47,6 +49,22 @@ class Product {
       description: description ?? this.description,
       category: category ?? this.category,
       isFeatured: isFeatured ?? this.isFeatured,
+    );
+  }
+
+  factory Product.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Product(
+      id: doc.id,
+      name: data['name'] ?? '',
+      price: (data['price'] ?? 0).toDouble(),
+      imageUrl: data['imageUrl'] ?? '',
+      size: data['size'] ?? '',
+      color: data['color'] ?? '',
+      brand: data['brand'] ?? '',
+      description: data['description'] ?? '',
+      category: data['category'] ?? '',
+      isFeatured: data['isFeatured'] ?? false,
     );
   }
 }

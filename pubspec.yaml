@@ -45,6 +45,9 @@ dependencies:
   http: ^1.1.2
   image_picker: ^1.0.4
 
+  # Additional dependencies for Add Product feature
+  intl: ^0.18.0 # For formatting dates or numbers if needed
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

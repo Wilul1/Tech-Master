@@ -409,77 +409,105 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 }
 
-class _AddProductDialog extends StatelessWidget {
-  const _AddProductDialog({Key? key}) : super(key: key);
+class _AddProductDialog extends StatefulWidget {
+  @override
+  __AddProductDialogState createState() => __AddProductDialogState();
+}
+
+class __AddProductDialogState extends State<_AddProductDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _descController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
+  File? _pickedImage;
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _pickedImage = File(pickedFile.path);
+      });
+    }
+  }
+
+  void _submitProduct() {
+    if (_formKey.currentState?.validate() ?? false) {
+      // Simulate saving product details
+      final newProduct = {
+        'name': _nameController.text,
+        'description': _descController.text,
+        'price': double.tryParse(_priceController.text) ?? 0.0,
+        'imagePath': _pickedImage?.path,
+        'isFeatured': true, // Mark as featured
+      };
+
+      // Add the product to Firestore and mark it as featured
+      FirebaseFirestore.instance.collection('products').add({
+        ...newProduct,
+        'createdAt': FieldValue.serverTimestamp(),
+      }).then((_) {
+        print('Product added to Firestore and marked as featured');
+        Navigator.pop(context);
+      }).catchError((error) {
+        print('Failed to add product: $error');
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: const Color(0xFF181C23),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Add New Product', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22)),
-            const SizedBox(height: 24),
-            TextField(
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Product Name',
-                labelStyle: const TextStyle(color: Color(0xFF6C7A89)),
-                filled: true,
-                fillColor: const Color(0xFF232A34),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Add Product', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: 'Product Name'),
+                validator: (value) => value == null || value.isEmpty ? 'Please enter a product name' : null,
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _descController,
+                decoration: const InputDecoration(labelText: 'Description'),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _priceController,
+                decoration: const InputDecoration(labelText: 'Price'),
+                keyboardType: TextInputType.number,
+                validator: (value) => value == null || value.isEmpty ? 'Please enter a price' : null,
+              ),
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  height: 120,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: _pickedImage == null
+                      ? const Center(child: Text('Upload Image', style: TextStyle(color: Colors.grey)))
+                      : Image.file(_pickedImage!, fit: BoxFit.cover),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Description',
-                labelStyle: const TextStyle(color: Color(0xFF6C7A89)),
-                filled: true,
-                fillColor: const Color(0xFF232A34),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _submitProduct,
+                child: const Text('Add Product'),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Price',
-                labelStyle: const TextStyle(color: Color(0xFF6C7A89)),
-                filled: true,
-                fillColor: const Color(0xFF232A34),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00D1FF),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('Add Product', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

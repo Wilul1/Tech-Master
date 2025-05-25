@@ -38,6 +38,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
+  Stream<List<Product>> getFeaturedProducts() {
+    return FirebaseFirestore.instance
+        .collection('products')
+        .where('isFeatured', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => Product.fromFirestore(doc)).toList());
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
@@ -242,100 +250,79 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         ],
                       ),
                       const SizedBox(height: 16),
-                      Consumer<ProductProvider>(
-                        builder: (context, productProvider, _) {
-                          final allProducts = productProvider.products;
-                          final featured = productProvider.featuredProducts.isNotEmpty
-                              ? productProvider.featuredProducts
-                              : demoFeatured;
-                          final filtered = _searchQuery.isEmpty
-                              ? featured
-                              : allProducts.where((p) =>
-                              p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                                  p.color.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                                  p.size.toLowerCase().contains(_searchQuery.toLowerCase())
-                          ).toList();
-                          final showList = _searchQuery.isNotEmpty ? filtered : featured;
-                          if (_searchQuery.isNotEmpty && filtered.isEmpty) {
-                            return const Center(child: Text('No products found.', style: TextStyle(color: Color(0xFF6C7A89))));
+                      StreamBuilder<List<Product>>(
+                        stream: getFeaturedProducts(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator());
                           }
-                          return SizedBox(
-                            height: 220,
-                            child: AnimatedBuilder(
-                              animation: _slideController,
-                              builder: (context, child) {
-                                return ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: showList.length,
-                                  itemBuilder: (context, index) {
-                                    final product = showList[index];
-                                    Widget imageWidget;
-                                    if (product.imageUrl.startsWith('assets/')) {
-                                      imageWidget = Hero(
-                                        tag: 'product_${product.id}',
-                                        child: Image.asset(product.imageUrl, height: 100, fit: BoxFit.contain),
-                                      );
-                                    } else if (product.imageUrl.isNotEmpty) {
-                                      imageWidget = Hero(
-                                        tag: 'product_${product.id}',
-                                        child: Image.network(product.imageUrl, height: 100, fit: BoxFit.contain),
-                                      );
-                                    } else {
-                                      imageWidget = const Icon(Icons.image, size: 100, color: Color(0xFF6C7A89));
-                                    }
-                                    final slide = Tween<Offset>(
-                                      begin: Offset(0.2 * (index + 1), 0),
-                                      end: Offset.zero,
-                                    ).animate(CurvedAnimation(
-                                      parent: _slideController,
-                                      curve: Interval(0, 1, curve: Curves.easeOutCubic),
-                                    ));
-                                    return SlideTransition(
-                                      position: slide,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          Navigator.of(context).push(
-                                            PageRouteBuilder(
-                                              transitionDuration: const Duration(milliseconds: 500),
-                                              pageBuilder: (context, animation, secondaryAnimation) => FadeTransition(
-                                                opacity: animation,
-                                                child: _ProductDetailPage(product: product),
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                        child: Container(
-                                          width: 180,
-                                          margin: const EdgeInsets.symmetric(horizontal: 8),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF232A34),
-                                            borderRadius: BorderRadius.circular(12),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withOpacity(0.08),
-                                                blurRadius: 8,
-                                                offset: const Offset(0, 2),
-                                              ),
-                                            ],
-                                          ),
-                                          child: Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Padding(
-                                                padding: const EdgeInsets.all(8.0),
-                                                child: imageWidget,
-                                              ),
-                                              Text(product.name, style: const TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
-                                              const SizedBox(height: 8),
-                                            ],
-                                          ),
+                          if (snapshot.hasError) {
+                            return const Center(child: Text('Error loading featured products.', style: TextStyle(color: Color(0xFF6C7A89))));
+                          }
+                          final featuredProducts = snapshot.data ?? [];
+                          if (featuredProducts.isEmpty) {
+                            return const Center(child: Text('No featured products available.', style: TextStyle(color: Color(0xFF6C7A89))));
+                          }
+                          return GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 10,
+                              mainAxisSpacing: 10,
+                              childAspectRatio: 1.0, // Smaller, more square cards
+                            ),
+                            itemCount: featuredProducts.length,
+                            itemBuilder: (context, index) {
+                              final product = featuredProducts[index];
+                              return GestureDetector(
+                                onTap: () {
+                                  showModalBottomSheet(
+                                    context: context,
+                                    backgroundColor: Colors.transparent,
+                                    isScrollControlled: true,
+                                    builder: (_) => _ProductDetailSheet(product: product),
+                                  );
+                                },
+                                child: Card(
+                                  color: const Color(0xFF232A34),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                                        child: Image.network(
+                                          product.imageUrl,
+                                          height: 90, // Smaller image
+                                          width: double.infinity,
+                                          fit: BoxFit.cover,
                                         ),
                                       ),
-                                    );
-                                  },
-                                );
-                              },
-                            ),
+                                      Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              product.name,
+                                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF00D1FF)),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '₹${product.price}',
+                                              style: const TextStyle(fontSize: 12, color: Color(0xFF6C7A89)),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
                       ),
@@ -446,6 +433,44 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             Text(subtitle, style: const TextStyle(color: Color(0xFF6C7A89), fontSize: 12)),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _productCard(Product product) {
+    return Card(
+      color: const Color(0xFF232A34),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            child: Image.network(
+              product.imageUrl,
+              height: 120,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.name,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF00D1FF)),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '₹${product.price}',
+                  style: const TextStyle(fontSize: 14, color: Color(0xFF6C7A89)),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
