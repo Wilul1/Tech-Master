@@ -11,6 +11,8 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -542,6 +544,31 @@ class _ProductDetailSheet extends StatelessWidget {
   final Product product;
   const _ProductDetailSheet({required this.product});
 
+  Future<void> _addToCart(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cartJson = prefs.getString('cart_items');
+    List<Map<String, dynamic>> cartItems = [];
+    if (cartJson != null) {
+      cartItems = List<Map<String, dynamic>>.from(jsonDecode(cartJson));
+    }
+    // Check if product already in cart
+    final idx = cartItems.indexWhere((item) => item['id'] == product.id);
+    if (idx != -1) {
+      cartItems[idx]['quantity'] = (cartItems[idx]['quantity'] ?? 1) + 1;
+    } else {
+      cartItems.add({
+        'id': product.id,
+        'name': product.name,
+        'price': product.price,
+        'image': product.imageUrl,
+        'quantity': 1,
+        'size': product.size,
+        'color': product.color,
+      });
+    }
+    await prefs.setString('cart_items', jsonEncode(cartItems));
+  }
+
   @override
   Widget build(BuildContext context) {
     final accent = const Color(0xFF00D1FF);
@@ -619,18 +646,22 @@ class _ProductDetailSheet extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: accent,
+                  backgroundColor: const Color(0xFF00D1FF),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   elevation: 2,
                 ),
-                onPressed: () {
-                  // TODO: Implement add to cart logic
+                onPressed: () async {
+                  await _addToCart(context);
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('${product.name} added to cart!')),
+                  );
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CartScreen()),
                   );
                 },
                 child: const Text('Add to cart'),

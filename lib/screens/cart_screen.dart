@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'checkout_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -9,28 +11,30 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  // Mock cart items
-  List<Map<String, dynamic>> cartItems = [
-    {
-      "name": "Laptop",
-      "price": 1200.0,
-      "quantity": 1,
-      "image": "https://via.placeholder.com/80",
-      "size": "15\"",
-      "color": "Grey"
-    },
-    {
-      "name": "Tablet",
-      "price": 600.0,
-      "quantity": 2,
-      "image": "https://via.placeholder.com/80",
-      "size": "10\"",
-      "color": "Black"
-    },
-  ];
-
+  List<Map<String, dynamic>> cartItems = [];
   String couponCode = "";
-  double shipping = 20.0; // Placeholder shipping
+  double shipping = 20.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCart();
+  }
+
+  Future<void> _loadCart() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cartJson = prefs.getString('cart_items');
+    if (cartJson != null) {
+      setState(() {
+        cartItems = List<Map<String, dynamic>>.from(jsonDecode(cartJson));
+      });
+    }
+  }
+
+  Future<void> _saveCart() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('cart_items', jsonEncode(cartItems));
+  }
 
   double get subtotal => cartItems.fold(0, (sum, item) => sum + item["price"] * item["quantity"]);
   double get grandTotal => subtotal + shipping;
@@ -40,12 +44,14 @@ class _CartScreenState extends State<CartScreen> {
       cartItems[index]["quantity"] += change;
       if (cartItems[index]["quantity"] < 1) cartItems[index]["quantity"] = 1;
     });
+    _saveCart();
   }
 
   void removeItem(int index) {
     setState(() {
       cartItems.removeAt(index);
     });
+    _saveCart();
   }
 
   void applyCoupon() {
