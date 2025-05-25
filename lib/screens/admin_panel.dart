@@ -141,14 +141,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   _adminNavItem(Icons.notifications, 'Notifications', badge: 3),
                   _adminNavItem(Icons.settings, 'Settings'),
                   _adminNavItem(Icons.bar_chart, 'Logs & Reports'),
-                  const SizedBox(height: 16),
+                  // Add Product button (admin only, in sidebar)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        icon: const Icon(Icons.home, color: Color(0xFF00D1FF)),
-                        label: const Text('View Homepage', style: TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+                        icon: const Icon(Icons.add, color: Color(0xFF00D1FF)),
+                        label: const Text('Add Product', style: TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF232A34),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -157,7 +157,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                           elevation: 0,
                         ),
                         onPressed: () {
-                          Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+                          showDialog(
+                            context: context,
+                            builder: (context) => _AddProductDialog(),
+                          );
                         },
                       ),
                     ),
@@ -401,6 +404,83 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AddProductDialog extends StatelessWidget {
+  const _AddProductDialog({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: const Color(0xFF181C23),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Add New Product', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22)),
+            const SizedBox(height: 24),
+            TextField(
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Product Name',
+                labelStyle: const TextStyle(color: Color(0xFF6C7A89)),
+                filled: true,
+                fillColor: const Color(0xFF232A34),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Description',
+                labelStyle: const TextStyle(color: Color(0xFF6C7A89)),
+                filled: true,
+                fillColor: const Color(0xFF232A34),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Price',
+                labelStyle: const TextStyle(color: Color(0xFF6C7A89)),
+                filled: true,
+                fillColor: const Color(0xFF232A34),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00D1FF),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Add Product', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

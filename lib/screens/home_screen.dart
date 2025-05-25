@@ -7,6 +7,10 @@ import 'cart_screen.dart';
 import '../providers/product_provider.dart';
 import '../models/product.dart';
 import 'package:flutter/physics.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -149,6 +153,29 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Add Product button (admin only)
+                      if (isAdmin)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.add, color: Color(0xFF00D1FF)),
+                            label: const Text('Add Product', style: TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF232A34),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              side: const BorderSide(color: Color(0xFF00D1FF)),
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
+                              elevation: 0,
+                            ),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => _AddProductDialog(),
+                              );
+                            },
+                          ),
+                        ),
+                      const SizedBox(height: 12),
                       // Banner image at the top
                       Container(
                         width: double.infinity,
@@ -338,12 +365,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             icon: Icon(Icons.shopping_cart),
             label: 'Cart',
           ),
-          BottomNavigationBarItem(
-            icon: isAdmin
-                ? const Icon(Icons.dashboard)
-                : const Icon(Icons.account_circle),
-            label: isAdmin ? 'Dashboard' : 'Account',
-          ),
+          if (isAdmin)
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard),
+              label: 'Dashboard',
+            )
+          else
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.account_circle),
+              label: 'Account',
+            ),
         ],
         currentIndex: 0,
         onTap: (index) {
@@ -357,7 +388,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             );
           } else if (index == 3) {
             if (isAdmin) {
-              Navigator.of(context).pushNamed('/admin');
+              Navigator.of(context).pushNamedAndRemoveUntil('/admin', (route) => false);
             } else if (user == null) {
               Navigator.push(
                 context,
@@ -657,6 +688,185 @@ class _ProductDetailPage extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// New: Add Product dialog for admin
+class _AddProductDialog extends StatefulWidget {
+  @override
+  __AddProductDialogState createState() => __AddProductDialogState();
+}
+
+class __AddProductDialogState extends State<_AddProductDialog> {
+  final _formKey = GlobalKey<FormState>();
+  String _name = '';
+  String _description = '';
+  double _price = 0;
+  File? _pickedImageFile;
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _pickedImageFile = File(pickedFile.path);
+      });
+    }
+  }
+
+  Future<void> _uploadProduct() async {
+    if (_pickedImageFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select an image.')),
+      );
+      return;
+    }
+    if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
+    try {
+      // Simulate saving to a local database or file
+      final productDetails = {
+        'name': _name,
+        'description': _description,
+        'price': _price,
+        'imagePath': _pickedImageFile!.path,
+        'createdAt': DateTime.now().toIso8601String(),
+      };
+      print('Product saved locally: $productDetails');
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Product "$_name" added successfully!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to add product: $e')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = const Color(0xFF00D1FF);
+    return Dialog(
+      backgroundColor: const Color(0xFF232A34),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // AppBar style header
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+            decoration: const BoxDecoration(
+              color: Color(0xFF181C23),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Center(
+              child: Text(
+                'ADD PRODUCT',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: accent, letterSpacing: 1.2),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Image upload area
+                  GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      height: 140,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF181C23),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: accent, width: 1.5),
+                      ),
+                      child: Center(
+                        child: _pickedImageFile == null
+                            ? Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.upload, color: accent, size: 40),
+                                  const SizedBox(height: 8),
+                                  Text('Upload Image', style: TextStyle(color: accent, fontWeight: FontWeight.bold)),
+                                ],
+                              )
+                            : ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.file(_pickedImageFile!, fit: BoxFit.cover, height: 120),
+                              ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Product Name
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Product Name',
+                      labelStyle: TextStyle(color: accent),
+                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: accent)),
+                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: accent)),
+                    ),
+                    style: const TextStyle(color: Colors.white),
+                    validator: (v) => v == null || v.isEmpty ? 'Enter product name' : null,
+                    onSaved: (v) => _name = v ?? '',
+                  ),
+                  const SizedBox(height: 18),
+                  // Description
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Description',
+                      labelStyle: TextStyle(color: accent),
+                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: accent)),
+                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: accent)),
+                    ),
+                    style: const TextStyle(color: Colors.white),
+                    maxLines: 3,
+                    onSaved: (v) => _description = v ?? '',
+                  ),
+                  const SizedBox(height: 18),
+                  // Price
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Price',
+                      labelStyle: TextStyle(color: accent),
+                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: accent)),
+                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: accent)),
+                    ),
+                    style: const TextStyle(color: Colors.white),
+                    keyboardType: TextInputType.number,
+                    validator: (v) => v == null || v.isEmpty ? 'Enter price' : null,
+                    onSaved: (v) => _price = double.tryParse(v ?? '') ?? 0,
+                  ),
+                  const SizedBox(height: 28),
+                  // Submit button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: accent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 2,
+                      ),
+                      onPressed: _uploadProduct,
+                      child: const Text('Submit Product'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
