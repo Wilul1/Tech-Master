@@ -44,6 +44,7 @@ dependencies:
   shared_preferences: ^2.2.2
   http: ^1.1.2
   image_picker: ^1.0.4
+  supabase_flutter: ^2.3.4
 
   # Additional dependencies for Add Product feature
   intl: ^0.18.0 # For formatting dates or numbers if needed

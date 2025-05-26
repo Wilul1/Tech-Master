@@ -8,6 +8,7 @@ import 'screens/auth/auth_wrapper.dart';
 import 'screens/splash_screen.dart';
 import 'screens/admin_panel.dart'; // Import the admin panel screen
 import 'screens/home_screen.dart'; // Import the home screen
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +16,12 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  await Supabase.initialize(
+    url: 'https://ayuzdcrlxocbamqgeagy.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5dXpkY3JseG9jYmFtcWdlYWd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgyMzI0NjcsImV4cCI6MjA2MzgwODQ2N30.T5OE222xOKzTM1_njYq8-hGMUxep2ZRc8IfrsTbPkig',
+  );
+
   runApp(const MyApp());
 }
 
