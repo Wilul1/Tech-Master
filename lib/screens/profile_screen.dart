@@ -27,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _cityController = TextEditingController();
   final _provinceController = TextEditingController();
   final _postalController = TextEditingController();
+  final _phoneController = TextEditingController(); // Controller for phone number
   String? _gender;
   DateTime? _birthday;
   File? _profileImage;
@@ -46,6 +47,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _cityController.dispose();
     _provinceController.dispose();
     _postalController.dispose();
+    _phoneController.dispose(); // Dispose phone controller
     super.dispose();
   }
 
@@ -71,6 +73,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _cityController.text = prefs.getString('profile_city') ?? '';
       _provinceController.text = prefs.getString('profile_province') ?? '';
       _postalController.text = prefs.getString('profile_postal') ?? '';
+      _phoneController.text = prefs.getString('profile_phone') ?? ''; // Load phone number
     });
   }
 
@@ -86,6 +89,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await prefs.setString('profile_city', _cityController.text);
     await prefs.setString('profile_province', _provinceController.text);
     await prefs.setString('profile_postal', _postalController.text);
+    await prefs.setString('profile_phone', _phoneController.text); // Save phone number
   }
 
   Future<void> _pickImage() async {
@@ -673,6 +677,183 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> _showEditProfileDialog(BuildContext context) async {
+    String? selectedGender = _gender; // Local variable for gender
+    DateTime? selectedBirthday = _birthday; // Local variable for birthday
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder( // Use StatefulBuilder to update dialog content
+        builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF232A34),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text('Edit Profile', style: TextStyle(color: Color(0xFF00D1FF))),
+            content: SingleChildScrollView(
+              child: Form(
+                key: _formKey, // Reuse the existing form key
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: _firstNameController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(labelText: 'First Name', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _lastNameController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(labelText: 'Last Name', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _bioController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(labelText: 'Bio', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 12),
+                    // Gender Dropdown
+                    DropdownButtonFormField<String>(
+                      value: selectedGender,
+                      decoration: const InputDecoration(
+                        labelText: 'Gender',
+                        labelStyle: TextStyle(color: Color(0xFF00D1FF)),
+                        border: OutlineInputBorder(),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF232A34)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF00D1FF)),
+                        ),
+                      ),
+                      dropdownColor: const Color(0xFF181C23),
+                      style: const TextStyle(color: Colors.white),
+                      items: ['Male', 'Female', 'Other', 'Prefer not to say'].map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value, style: const TextStyle(color: Colors.white)),
+                        );
+                      }).toList(),
+                      onChanged: (newValue) {
+                        setState(() {
+                          selectedGender = newValue;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    // Birthday Picker
+                    TextFormField(
+                      controller: _birthdayController, // Use the persistent controller
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'Birthday (MM/DD/YYYY)',
+                        labelStyle: TextStyle(color: Color(0xFF00D1FF)),
+                        border: OutlineInputBorder(),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF232A34)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF00D1FF)),
+                        ),
+                      ),
+                      readOnly: true,
+                      onTap: () async {
+                        final DateTime? pickedDate = await showDatePicker(
+                          context: context,
+                          initialDate: selectedBirthday ?? DateTime.now(),
+                          firstDate: DateTime(1900),
+                          lastDate: DateTime.now(),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: const ColorScheme.dark(
+                                  primary: Color(0xFF00D1FF), // Header background color
+                                  onPrimary: Colors.black, // Header text color
+                                  onSurface: Colors.white, // Calendar text color
+                                  surface: Color(0xFF232A34), // Calendar background color
+                                ),
+                                dialogBackgroundColor: const Color(0xFF181C23), // Dialog background
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (pickedDate != null) {
+                          setState(() {
+                            selectedBirthday = pickedDate;
+                            _birthdayController.text = '${pickedDate.month}/${pickedDate.day}/${pickedDate.year}';
+                          });
+                        }
+                      },
+                    ),
+                     const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _phoneController, // Phone number field
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(labelText: 'Phone Number', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _addressController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(labelText: 'Address', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _cityController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(labelText: 'City', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _provinceController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(labelText: 'Province', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                    ),
+                     const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _postalController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(labelText: 'Postal Code', labelStyle: TextStyle(color: Color(0xFF00D1FF))),
+                       keyboardType: TextInputType.number,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel', style: TextStyle(color: Color(0xFF00D1FF))),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00D1FF)),
+                onPressed: () async {
+                  if (_formKey.currentState?.validate() ?? false) {
+                    // Update state variables from local dialog variables
+                    setState(() {
+                       _gender = selectedGender;
+                       _birthday = selectedBirthday;
+                    });
+                    await _saveProfile();
+                    if(mounted) Navigator.of(context).pop();
+                  }
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+     // Reload profile data after dialog is closed
+    _loadProfile();
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
@@ -712,12 +893,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     '@${user?.email ?? 'example.com'}',
                     style: const TextStyle(color: Color(0xFF00D1FF), fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 8),
-                  OutlinedButton(
-                    onPressed: _pickImage,
-                    style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF00D1FF))),
-                    child: const Text('Edit Profile', style: TextStyle(color: Color(0xFF00D1FF))),
-                  ),
                   const SizedBox(height: 32),
                   // Menu List
                   Container(
@@ -738,13 +913,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           context,
                           user?.email == 'admin@techhub.com' ? Icons.admin_panel_settings : Icons.person,
                           user?.email == 'admin@techhub.com' ? 'Admin Panel' : 'Profile',
-                          onTap: user?.email == 'admin@techhub.com'
-                              ? () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => const AdminPanelScreen()),
-                                  );
-                                }
-                              : null,
+                          onTap: () {
+                            if (user?.email == 'admin@techhub.com') {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const AdminPanelScreen()),
+                              );
+                            } else {
+                              _showEditProfileDialog(context);
+                            }
+                          },
                         ),
                         _profileMenuItem(context, Icons.shopping_bag, 'My Orders', onTap: () {/* TODO: Navigate to orders */}),
                         _profileMenuItem(context, Icons.favorite_border, 'Wishlist', onTap: () => _showWishlistDialog(context)),
@@ -778,7 +955,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
       onTap: isLogout || onTap != null
           ? onTap
           : () {
-              if (title == 'My Orders') {
+              if (title == 'Profile') {
+                // Show profile basic info dialog
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: const Color(0xFF232A34),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    title: const Text('Basic Information', style: TextStyle(color: Color(0xFF00D1FF))),
+                    content: SingleChildScrollView(
+                      child: ListBody(
+                        children: <Widget>[
+                          _buildInfoRow('First Name:', _firstNameController.text),
+                          _buildInfoRow('Last Name:', _lastNameController.text),
+                          _buildInfoRow('Email:', Provider.of<AuthProvider>(context, listen: false).user?.email ?? ''),
+                          _buildInfoRow('Phone Number:', _phoneController.text),
+                          _buildInfoRow('Gender:', _gender ?? ''),
+                          _buildInfoRow('Birthday:', _birthdayController.text),
+                          _buildInfoRow('Address:', _addressController.text),
+                          _buildInfoRow('City:', _cityController.text),
+                          _buildInfoRow('Province:', _provinceController.text),
+                          _buildInfoRow('Postal Code:', _postalController.text),
+                          _buildInfoRow('Bio:', _bioController.text),
+                        ],
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Close', style: TextStyle(color: Color(0xFF00D1FF))),
+                      ),
+                    ],
+                  ),
+                );
+              } else if (title == 'My Orders') {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
@@ -809,7 +1019,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 );
-              } else {
+              } else if (onTap == null) {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
@@ -850,6 +1060,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const Icon(Icons.chevron_right, color: Color(0xFF6C7A89)),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120, // Adjust width as needed
+            child: Text('$label', style: const TextStyle(color: Color(0xFF00D1FF), fontWeight: FontWeight.bold)),
+          ),
+          Expanded(
+            child: Text(value.isNotEmpty ? value : 'N/A', style: const TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }

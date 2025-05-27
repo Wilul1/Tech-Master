@@ -5,6 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
+import 'package:tech_hub_app/screens/products_screen.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({Key? key}) : super(key: key);
@@ -245,6 +246,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 // Show the admin panel UI if the user is an admin
                 return Scaffold(
                   backgroundColor: const Color(0xFF14171C),
+                  appBar: AppBar(
+                    title: const Text('Admin Panel'),
+                    backgroundColor: const Color(0xFF232A34),
+                    leading: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
                   body: Row(
                     children: [
                       // Sidebar
@@ -269,7 +280,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                             const SizedBox(height: 32),
                             _adminNavItem(Icons.dashboard, 'Dashboard', selected: true),
                             _adminNavItem(Icons.people, 'Users', badge: 12),
-                            _adminNavItem(Icons.shopping_bag, 'Products'),
+                            _adminNavItem(Icons.shopping_bag, 'Products',
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const ProductsScreen()),
+                                  );
+                                },
+                            ),
                             _adminNavItem(Icons.notifications, 'Notifications', badge: 3),
                             _adminNavItem(Icons.settings, 'Settings'),
                             _adminNavItem(Icons.bar_chart, 'Logs & Reports'),
